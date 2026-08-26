@@ -1,0 +1,257 @@
+# These passive probes are mapped to the 2009 build by normalized instruction
+# sequence and corroborated control flow. They do not bypass guest behavior.
+[[midasm_hook]]
+address = 0x840F03D8
+name = "RevanaTraceMainLoopEntry"
+
+[[midasm_hook]]
+address = 0x840F03F0
+name = "RevanaTraceMainLoopDeviceProbe"
+
+[[midasm_hook]]
+address = 0x840F040C
+name = "RevanaTraceMainLoopSystemReady"
+
+[[midasm_hook]]
+address = 0x840F0424
+name = "RevanaTraceMainLoopHostReady"
+
+[[midasm_hook]]
+address = 0x840F0454
+name = "RevanaTraceMainLoopFrameAllocated"
+
+[[midasm_hook]]
+address = 0x840F0478
+name = "RevanaTraceMainLoopWorkerStarted"
+
+[[midasm_hook]]
+address = 0x840F04A4
+name = "RevanaTraceMainLoopWorkerReady"
+
+[[midasm_hook]]
+address = 0x840F04DC
+name = "RevanaTraceMainLoopCleanup"
+
+[[midasm_hook]]
+address = 0x840FCE00
+name = "RevanaTraceStartupSelector13LoadReturned"
+
+[[midasm_hook]]
+address = 0x840FD2D0
+name = "RevanaTraceStartupWorkerFailure"
+
+[[midasm_hook]]
+address = 0x840FDA8C
+name = "RevanaTraceFrameStateTransition"
+
+[[midasm_hook]]
+address = 0x840FF368
+name = "RevanaTraceMainBootstrapEntry"
+
+[[midasm_hook]]
+address = 0x840FF3C4
+name = "RevanaTraceMainBootstrapConfigReady"
+
+[[midasm_hook]]
+address = 0x840FF408
+name = "RevanaTraceMainBootstrapServicesReady"
+
+[[midasm_hook]]
+address = 0x840FF420
+name = "RevanaTraceMainBootstrapGraphicsReady"
+
+[[midasm_hook]]
+address = 0x840FED78
+name = "RevanaTraceMainDispatchEntry"
+
+[[midasm_hook]]
+address = 0x840FEDBC
+name = "RevanaTraceMainDispatchObjectReady"
+
+[[midasm_hook]]
+address = 0x84171D10
+name = "RevanaTraceNetworkInitEntry"
+
+[[midasm_hook]]
+address = 0x84171E7C
+name = "RevanaTraceNetworkInitFatalConfig"
+
+[[midasm_hook]]
+address = 0x84172ACC
+name = "RevanaTraceNetworkInitBeforeWsa"
+
+[[midasm_hook]]
+address = 0x84172ADC
+name = "RevanaTraceNetworkInitFailure"
+
+[[midasm_hook]]
+address = 0x84172AE8
+name = "RevanaTraceNetworkInitSuccess"
+
+[[midasm_hook]]
+address = 0x841AC870
+name = "RevanaTraceLobbySetupEntry"
+
+[[midasm_hook]]
+address = 0x841AC890
+name = "RevanaTraceLobbySetupFailure"
+
+[[midasm_hook]]
+address = 0x841AC8A8
+name = "RevanaTraceLobbySetupGuardAccepted"
+
+[[midasm_hook]]
+address = 0x841ACC88
+name = "RevanaTraceLobbyControllerEntry"
+
+[[midasm_hook]]
+address = 0x841ACD3C
+name = "RevanaTraceLobbyControllerFailure"
+
+[[midasm_hook]]
+address = 0x84195C20
+name = "RevanaTraceWorldStatusSet"
+
+[[midasm_hook]]
+address = 0x8419C358
+name = "RevanaTraceLobbyCommand31Poll"
+
+[[midasm_hook]]
+address = 0x8419C36C
+name = "RevanaTraceLobbyCommand31Packet"
+
+[[midasm_hook]]
+address = 0x84189500
+name = "RevanaTraceZoneDescriptorLookup"
+
+[[midasm_hook]]
+address = 0x84189588
+name = "RevanaTracePostSelectionServiceOpen"
+
+[[midasm_hook]]
+address = 0x84189610
+name = "RevanaTracePostSelectionServicePoll"
+
+[[midasm_hook]]
+address = 0x8418976C
+name = "RevanaTracePostSelectionAssociationOpen"
+
+[[midasm_hook]]
+address = 0x841897F4
+name = "RevanaTracePostSelectionAssociationPoll"
+
+[[midasm_hook]]
+address = 0x841878F8
+name = "RevanaTracePhase6Readiness"
+
+[[midasm_hook]]
+address = 0x840FA820
+name = "RevanaTraceZoneLoadSequence"
+
+[[midasm_hook]]
+address = 0x840FA5D0
+name = "RevanaTraceZoneLoadSequence"
+
+[[midasm_hook]]
+address = 0x840FDFA8
+name = "RevanaTraceGameplayFrameReturn"
+
+[[midasm_hook]]
+address = 0x841878B0
+name = "RevanaApplyDirectMapCipherKey"
+
+[[midasm_hook]]
+address = 0x84197538
+name = "RevanaTraceWorldReceiveDecodeResult"
+
+[[midasm_hook]]
+address = 0x841952D8
+name = "RevanaTraceWorldErrorState"
+
+[[midasm_hook]]
+address = 0x84197828
+name = "RevanaTraceWorldDispatch"
+
+[[midasm_hook]]
+address = 0x841978BC
+name = "RevanaTraceWorldDispatch"
+
+[[midasm_hook]]
+address = 0x84198648
+name = "RevanaTraceWorldFatalState"
+
+[[midasm_hook]]
+address = 0x8412C4C0
+name = "RevanaTraceObjectBuildEntry"
+
+[[midasm_hook]]
+address = 0x8412C940
+name = "RevanaTraceObjectBuildNull"
+
+[[midasm_hook]]
+address = 0x8412CD88
+name = "RevanaTraceResourceLoadEntry"
+
+[[midasm_hook]]
+address = 0x841979E0
+name = "RevanaTraceWorldNetworkUpdate"
+
+[[midasm_hook]]
+address = 0x84197AD8
+name = "RevanaTraceWorldPacketDequeued"
+
+[[midasm_hook]]
+address = 0x841B0F80
+name = "RevanaTraceWorldSendEntry"
+
+[[midasm_hook]]
+address = 0x8433ED5C
+name = "RevanaTraceWorldSendTarget"
+
+[[midasm_hook]]
+address = 0x8433ED64
+name = "RevanaTraceWorldSendResult"
+
+[[midasm_hook]]
+address = 0x84571E08
+name = "RevanaTraceFourByteSocketReceive"
+
+[[midasm_hook]]
+address = 0x84694BA8
+name = "RevanaTraceGuestExceptionRaise"
+
+[[midasm_hook]]
+address = 0x8467F370
+name = "RevanaTraceGuestCppThrow"
+
+[[midasm_hook]]
+address = 0x8421CBD4
+name = "RevanaTraceServiceDispatchSlot1852"
+
+[[midasm_hook]]
+address = 0x8421B530
+name = "RevanaTraceServiceDispatchSlot1852Object"
+
+[[midasm_hook]]
+address = 0x84300100
+name = "RevanaTraceType2Enqueue"
+
+[[midasm_hook]]
+address = 0x84301B90
+name = "RevanaTraceType2ReadReturned"
+
+[[midasm_hook]]
+address = 0x843037C8
+name = "RevanaTraceType2ConsumerEntry"
+
+[[midasm_hook]]
+address = 0x84303BCC
+name = "RevanaTraceType2ConsumerTagRead"
+
+[[midasm_hook]]
+address = 0x84251234
+name = "RevanaTracePackageMetadataFailure"
+
+[[midasm_hook]]
+address = 0x84251478
+name = "RevanaTraceStartupPackageValidationFailure"

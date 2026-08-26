@@ -1,0 +1,236 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      publish_mode:
+        description: artifact or release
+        required: true
+        type: string
+    secrets:
+      ASSETS_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  ASSETS_REPO: https://github.com/REVana360/vana360-private-assets
+
+jobs:
+  build:
+    name: Windows x64
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out Vana360
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+
+      - name: Verify repository
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check clang-format==22.1.8
+          ./scripts/verify.ps1
+
+      - name: Install build tools
+        shell: pwsh
+        run: |
+          choco install cmake ninja -y --no-progress
+          'C:\Program Files\LLVM\bin' | Out-File -FilePath $env:GITHUB_PATH -Append
+          & 'C:\Program Files\LLVM\bin\clang.exe' --version
+
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+        with:
+          arch: x64
+
+      - name: Set up sccache
+        uses: hendrikmuhs/ccache-action@v1.2.23
+        with:
+          variant: sccache
+          key: windows-amd64
+
+      - name: Read SDK lock
+        id: sdk-lock
+        shell: pwsh
+        run: |
+          $lock = Get-Content rexglue-sdk.lock.json -Raw | ConvertFrom-Json
+          if ($lock.repository -cne 'https://github.com/REVana360/vana360-sdk') {
+            throw 'Unexpected SDK repository in rexglue-sdk.lock.json'
+          }
+          if ($lock.branch -cne 'vana360-sdk') {
+            throw 'Unexpected SDK branch in rexglue-sdk.lock.json'
+          }
+          if ($lock.commit -cnotmatch '^[0-9a-f]{40}$') {
+            throw 'Invalid SDK commit in rexglue-sdk.lock.json'
+          }
+          "repository=$($lock.repository)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "branch=$($lock.branch)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "commit=$($lock.commit)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Clone pinned SDK
+        shell: pwsh
+        run: |
+          $sdkRoot = Join-Path $env:RUNNER_TEMP 'vana360-sdk'
+          git clone --branch '${{ steps.sdk-lock.outputs.branch }}' --single-branch `
+            '${{ steps.sdk-lock.outputs.repository }}' $sdkRoot
+          if ($LASTEXITCODE -ne 0) { throw 'SDK clone failed' }
+          git -C $sdkRoot checkout --detach '${{ steps.sdk-lock.outputs.commit }}'
+          if ($LASTEXITCODE -ne 0) { throw 'SDK checkout failed' }
+          git -C $sdkRoot submodule update --init --recursive --depth 1
+          if ($LASTEXITCODE -ne 0) { throw 'SDK submodule init failed' }
+
+      - name: Restore SDK install
+        id: sdk-cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}\vana360-sdk\out\install\win-amd64
+          key: vana360-sdk-windows-${{ steps.sdk-lock.outputs.commit }}
+
+      - name: Build and install SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ runner.temp }}\vana360-sdk
+        shell: pwsh
+        run: |
+          cmake --preset win-amd64 `
+            -DREXGLUE_BUILD_TESTS=OFF `
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache `
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build out/build/win-amd64 --config Release `
+            --target install --parallel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Owner-supplied inputs live only in the private assets repository.
+      # Never echo their contents or a command that exposes them.
+      - name: Fetch codegen input
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.ASSETS_TOKEN }}
+          GIT_CONFIG_COUNT: '1'
+          GIT_CONFIG_KEY_0: credential.helper
+          GIT_CONFIG_VALUE_0: '!gh auth git-credential'
+          GIT_LFS_SKIP_SMUDGE: '1'
+        run: |
+          if (-not $env:GH_TOKEN) {
+            throw 'ASSETS_TOKEN secret is empty or missing'
+          }
+          if ($env:ASSETS_REPO -cne
+              'https://github.com/REVana360/vana360-private-assets') {
+            throw 'Unexpected private asset repository'
+          }
+          git lfs version
+          if ($LASTEXITCODE -ne 0) { throw 'Git LFS is unavailable' }
+
+          $assetPaths = @(
+            'game/PlayOnline/GameExecContent0001.xex',
+            'game/PlayOnline/PolCoreContent.xex',
+            'game/0001/FFXi.dll',
+            'game/0001/FFXiMain.dll',
+            'game/0001/patch.xex'
+          )
+          $assetsRoot = Join-Path $env:RUNNER_TEMP 'vana360-private-assets'
+          git clone --quiet --depth 1 --branch main --single-branch `
+            $env:ASSETS_REPO $assetsRoot
+          if ($LASTEXITCODE -ne 0) { throw 'Private asset clone failed' }
+          $lfsInclude = $assetPaths -join ','
+          git -C $assetsRoot lfs pull `
+            --include=$lfsInclude --exclude=''
+          if ($LASTEXITCODE -ne 0) { throw 'Private asset LFS pull failed' }
+
+          ./scripts/verify-codegen-inputs.ps1 `
+            -Root (Join-Path $assetsRoot 'game')
+
+          foreach ($relativePath in $assetPaths) {
+            $source = Join-Path $assetsRoot $relativePath
+            $destination = Join-Path $PWD $relativePath
+            New-Item -ItemType Directory -Force `
+              -Path (Split-Path -Parent $destination) | Out-Null
+            Copy-Item -LiteralPath $source -Destination $destination
+          }
+
+      - name: Clean up private asset checkout
+        if: always()
+        shell: pwsh
+        run: |
+          $tempRoot = [IO.Path]::GetFullPath($env:RUNNER_TEMP)
+          $assetsRoot = [IO.Path]::GetFullPath(
+            (Join-Path $tempRoot 'vana360-private-assets'))
+          if ([IO.Path]::GetDirectoryName($assetsRoot) -ne
+              $tempRoot.TrimEnd([IO.Path]::DirectorySeparatorChar)) {
+            throw 'Refusing unsafe private asset cleanup'
+          }
+          if (Test-Path -LiteralPath $assetsRoot) {
+            $rootItem = Get-Item -LiteralPath $assetsRoot -Force
+            $reparsePoints = @(
+              Get-ChildItem -LiteralPath $assetsRoot -Force -Recurse `
+                -Attributes ReparsePoint
+            )
+            if (($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
+                $reparsePoints.Count -ne 0) {
+              throw 'Refusing private asset cleanup across a reparse point'
+            }
+            Remove-Item -LiteralPath $assetsRoot -Recurse -Force
+          }
+
+      - name: Validate codegen input
+        shell: pwsh
+        run: ./scripts/verify-codegen-inputs.ps1
+
+      - name: Generate recompiled sources
+        shell: pwsh
+        run: |
+          $generator = Join-Path $env:RUNNER_TEMP `
+            'vana360-sdk\out\install\win-amd64\bin\rexglue.exe'
+          & $generator codegen .\revana_manifest.toml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Configure Vana360
+        shell: pwsh
+        run: |
+          $sdkRoot = Join-Path $env:RUNNER_TEMP 'vana360-sdk'
+          $sdkConfig = Join-Path $sdkRoot `
+            'out\install\win-amd64\lib\cmake\rexglue'
+          cmake --preset win-amd64-title-release `
+            "-DREVANA_REXSDK_DIR=$sdkRoot" `
+            '-DREXSDK_DIR=' `
+            "-Drexglue_DIR=$sdkConfig" `
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build Vana360
+        shell: pwsh
+        run: |
+          cmake --build --preset win-amd64-title-release --parallel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run native tests
+        shell: pwsh
+        run: >-
+          ctest --test-dir build/win-amd64-title-release
+          --output-on-failure --no-tests=error
+
+      - name: Package archive
+        shell: pwsh
+        run: |
+          python scripts/package.py --platform windows --arch x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: vana360-windows-x64
+          path: out/vana360-v*-windows-x64.zip
+          if-no-files-found: error
+          retention-days: ${{ inputs.publish_mode == 'release' && 1 || 14 }}
+
+      - name: Show sccache statistics
+        if: always()
+        shell: pwsh
+        run: sccache --show-stats

@@ -1,0 +1,64 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++",
+        "REVANA_BUILD_TESTS": true,
+        "REVANA_BUILD_TITLE": false
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "win-amd64-debug",
+      "displayName": "Windows AMD64 Debug",
+      "inherits": "windows-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "win-amd64-title-release",
+      "displayName": "Windows AMD64 Title Release",
+      "inherits": "windows-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS": "-march=x86-64-v2",
+        "REVANA_BUILD_TITLE": true,
+        "REXSDK_DIR": "${sourceDir}/../vana360-sdk"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "win-amd64-debug",
+      "configurePreset": "win-amd64-debug"
+    },
+    {
+      "name": "win-amd64-title-release",
+      "configurePreset": "win-amd64-title-release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "win-amd64-debug",
+      "configurePreset": "win-amd64-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

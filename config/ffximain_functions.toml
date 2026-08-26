@@ -1,0 +1,22 @@
+# These runtime-proven indirect and tail-branch targets are absent from the
+# 2009 FFXiMain exception table, so automatic discovery cannot register them
+# without explicit function seeds.
+[functions."8410D2C8"]
+name = "sub_8410D2C8"
+
+[functions."841285B0"]
+name = "sub_841285B0"
+
+[functions."841285C0"]
+name = "sub_841285C0"
+
+[functions."841285F0"]
+name = "sub_841285F0"
+
+[functions."84582C20"]
+name = "sub_84582C20"
+
+# Runtime reached this vtable target while parsing a provenance-backed SCD.
+# It is absent from the exception table, like the seeds above.
+[functions."84575268"]
+name = "sub_84575268"

@@ -1,0 +1,101 @@
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+
+void     RevanaSetGuestTraceHooksEnabled(bool enabled);
+bool     RevanaGuestLobbyControllerReady();
+uint32_t RevanaGuestLobbyControllerObject();
+void     RevanaConfigureDirectPolUiRegistrationStub();
+void     RevanaConfigureDirectPolResolver(uint32_t ipv4_address);
+bool     RevanaConfigureDirectLobbyViewBootstrap(uint16_t       view_port,
+                                                 const uint8_t* packet,
+                                                 size_t         packet_size);
+bool     RevanaConfigureDirectMapCipherKey(const uint8_t* key, size_t key_size);
+void     RevanaClearDirectMapCipherKey();
+bool     RevanaConfigureDirectMapEndpoint(uint32_t ipv4_address,
+                                          uint16_t port);
+void     RevanaClearDirectMapEndpoint();
+
+void RevanaTraceNetworkInitEntry();
+void RevanaTraceNetworkInitFatalConfig();
+void RevanaTraceNetworkInitBeforeWsa();
+void RevanaTraceServiceDispatchSlot1852();
+void RevanaTraceServiceDispatchSlot1852Object();
+void RevanaTraceType2Enqueue();
+void RevanaTraceType2ReadReturned();
+void RevanaTraceType2ConsumerEntry();
+void RevanaTraceType2ConsumerTagRead();
+void RevanaTraceNetworkInitFailure();
+void RevanaTraceNetworkInitSuccess();
+void RevanaTraceLobbySetupEntry();
+void RevanaTraceLobbySetupGuardAccepted();
+void RevanaTraceLobbySetupFailure();
+void RevanaTraceLobbyControllerEntry();
+void RevanaTraceLobbyControllerFailure();
+void RevanaTraceLobbyCommand31Poll();
+void RevanaTraceLobbyCommand31Packet();
+void RevanaTraceZoneDescriptorLookup();
+void RevanaTracePostSelectionServiceOpen();
+void RevanaTracePostSelectionServicePoll();
+void RevanaTracePostSelectionAssociationOpen();
+void RevanaTracePostSelectionAssociationPoll();
+void RevanaTracePhase6Readiness();
+void RevanaTraceZoneLoadSequence();
+void RevanaTraceGameplayFrameReturn();
+void RevanaTraceWorldNetworkUpdate();
+void RevanaTraceWorldStatusSet();
+void RevanaApplyDirectMapCipherKey();
+void RevanaTraceWorldReceiveDecodeResult();
+void RevanaTraceWorldErrorState();
+void RevanaTraceWorldDispatch();
+void RevanaTraceWorldFatalState();
+void RevanaTraceObjectBuildEntry();
+void RevanaTraceObjectBuildNull();
+void RevanaTraceResourceLoadEntry();
+void RevanaTraceWorldPacketDequeued();
+void RevanaTraceWorldSendEntry();
+void RevanaTraceWorldSendTarget();
+void RevanaTraceWorldSendResult();
+void RevanaTracePolError2071MapperA();
+void RevanaTracePolError2071MapperB();
+void RevanaTracePolServiceOpenEntry();
+void RevanaTracePolError2071UninitializedA();
+void RevanaTracePolError2071UninitializedB();
+void RevanaTracePolError2071UninitializedC();
+void RevanaTraceConfigHandshakeState();
+void RevanaTraceConfigHandshakeReturn();
+void RevanaTraceConfigRequest();
+void RevanaTraceConfigResponse();
+void RevanaTraceConfigServiceState();
+void RevanaTraceConfigParserState();
+void RevanaTraceConfigFollowupState();
+void RevanaTraceConfigTransferState();
+void RevanaTraceFourByteSocketReceive();
+void RevanaTraceGuestExceptionRaise();
+void RevanaTraceGuestCppThrow();
+void RevanaTraceFrameStateTransition();
+void RevanaTraceMainBootstrapEntry();
+void RevanaTraceMainBootstrapConfigReady();
+void RevanaTraceMainBootstrapServicesReady();
+void RevanaTraceMainBootstrapGraphicsReady();
+void RevanaTraceMainDispatchEntry();
+void RevanaTraceMainDispatchObjectReady();
+void RevanaTraceMainLoopEntry();
+void RevanaTraceFfxiExportEntry();
+void RevanaSelectPolCoreEnglish();
+void RevanaTraceFfxiMainOrdinal2Call();
+void RevanaTraceFfxiMainOrdinal3Call();
+void RevanaTraceFfxiMainOrdinal4Call();
+void RevanaTraceFfxiMainOrdinal5Call();
+void RevanaTraceMainLoopSystemReady();
+void RevanaTraceMainLoopHostReady();
+void RevanaTraceMainLoopFrameAllocated();
+void RevanaTraceMainLoopWorkerStarted();
+void RevanaTraceMainLoopWorkerReady();
+void RevanaTraceMainLoopCleanup();
+void RevanaTraceMainLoopDeviceProbe();
+void RevanaTraceStartupSelector13LoadReturned();
+void RevanaTraceStartupWorkerFailure();
+void RevanaTracePackageMetadataFailure();
+void RevanaTraceStartupPackageValidationFailure();

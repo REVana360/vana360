@@ -1,0 +1,14 @@
+/AGENTS.md
+/docs/ai_agents/local/
+/build/
+/game/
+/generated/
+/out/
+/.tmp/
+*.log
+*.pyc
+*.user
+*.suo
+.vs/
+.vscode/
+__pycache__/

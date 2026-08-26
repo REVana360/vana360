@@ -1,0 +1,19 @@
+[[midasm_hook]]
+address = 0x83060108
+name = "RevanaTraceFfxiExportEntry"
+
+[[midasm_hook]]
+address = 0x83061B78
+name = "RevanaTraceFfxiMainOrdinal2Call"
+
+[[midasm_hook]]
+address = 0x83061BE8
+name = "RevanaTraceFfxiMainOrdinal3Call"
+
+[[midasm_hook]]
+address = 0x83061C58
+name = "RevanaTraceFfxiMainOrdinal4Call"
+
+[[midasm_hook]]
+address = 0x83061CA0
+name = "RevanaTraceFfxiMainOrdinal5Call"

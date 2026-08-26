@@ -1,0 +1,4 @@
+# The 2009 FFXi boot export is invoked indirectly after PolCore loads the
+# module and is absent from its exception table.
+[functions."8328C828"]
+name = "sub_8328C828"

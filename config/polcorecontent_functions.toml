@@ -1,0 +1,4 @@
+# PolCoreContent export ordinal 7 is invoked indirectly by the 2009 GameExec
+# module and is absent from the module exception table.
+[functions."82424448"]
+name = "sub_82424448"

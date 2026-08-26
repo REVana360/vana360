@@ -1,0 +1,4 @@
+# This tail-branch target is absent from the 2009 patch module's exception
+# table and requires an explicit function seed.
+[functions."82A15ADC"]
+name = "sub_82A15ADC"

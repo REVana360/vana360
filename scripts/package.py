@@ -1,0 +1,222 @@
+"""Build a Vana360 Windows x64 release archive from an explicit allowlist."""
+
+from __future__ import annotations
+
+import argparse
+import pathlib
+import re
+import shutil
+import stat
+import zipfile
+
+
+REPO = pathlib.Path(__file__).resolve().parent.parent
+PACKAGE_NAME = "vana360"
+
+# These are the Release outputs of the `revana` host and its generated module
+# targets.  Runtime-loaded SDK libraries are listed explicitly as well.
+RELEASE_FILES = (
+    "revana.exe",
+    "revana_FFXi.dll",
+    "revana_FFXiMain.dll",
+    "revana_PolCoreContent.dll",
+    "revana_patch.dll",
+    "revana_hooks.dll",
+    "rexruntime.dll",
+    "rexgpu-xenos.dll",
+)
+
+FORBIDDEN_INPUT_SUFFIXES = {
+    ".dat",
+    ".iso",
+    ".log",
+    ".sve",
+    ".trace",
+    ".xex",
+    ".xexp",
+}
+
+
+def read_version() -> str:
+    """Read the three-component version declared by the Vana360 project."""
+
+    text = (REPO / "CMakeLists.txt").read_text(encoding="ascii")
+    match = re.search(r"^project\(\s*revana\s+VERSION\s+(\d+\.\d+\.\d+)\b", text, re.MULTILINE)
+    if not match:
+        raise SystemExit("error: project version not found in CMakeLists.txt")
+    return match.group(1)
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--platform",
+        choices=("windows",),
+        default="windows",
+        help="package platform (Windows is the only supported platform)",
+    )
+    parser.add_argument(
+        "--arch",
+        choices=("x64",),
+        default="x64",
+        help="package architecture (x64 is the only supported architecture)",
+    )
+    parser.add_argument(
+        "--build-dir",
+        type=pathlib.Path,
+        default=REPO / "build" / "win-amd64-title-release",
+        help="Release build directory",
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=pathlib.Path,
+        default=REPO / "out",
+        help="directory receiving the archive and staging tree",
+    )
+    return parser.parse_args(argv)
+
+
+def _is_reparse_point(path: pathlib.Path) -> bool:
+    if path.is_symlink():
+        return True
+    try:
+        attributes = path.stat().st_file_attributes
+    except (AttributeError, FileNotFoundError, OSError):
+        return False
+    return bool(attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))
+
+
+def _regular_file(path: pathlib.Path, label: str) -> None:
+    if _is_reparse_point(path):
+        raise SystemExit(f"error: reparse point is not allowed: {label}")
+    if not path.is_file():
+        raise SystemExit(f"error: required file is missing: {label}")
+
+
+def _copy_regular_file(source: pathlib.Path, destination: pathlib.Path, label: str) -> None:
+    _regular_file(source, label)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, destination)
+
+
+def _remove_regular_tree(path: pathlib.Path) -> None:
+    for child in path.iterdir():
+        if _is_reparse_point(child):
+            raise SystemExit(f"error: reparse point in staging tree: {child}")
+        if child.is_dir():
+            _remove_regular_tree(child)
+        elif child.is_file():
+            child.unlink()
+        else:
+            raise SystemExit(f"error: unsupported staging entry: {child}")
+    path.rmdir()
+
+
+def _safe_stage(out_dir: pathlib.Path, name: str) -> pathlib.Path:
+    out_root = out_dir.resolve()
+    if _is_reparse_point(out_dir) or (out_dir.exists() and not out_dir.is_dir()):
+        raise SystemExit(f"error: output directory is not a regular directory: {out_dir}")
+    package_dir = out_dir / "pkg"
+    if _is_reparse_point(package_dir) or (package_dir.exists() and not package_dir.is_dir()):
+        raise SystemExit(f"error: package staging directory is not a regular directory: {package_dir}")
+    if package_dir.exists() and package_dir.resolve().parent != out_root:
+        raise SystemExit(f"error: package staging directory escapes output directory: {package_dir}")
+    package_dir.mkdir(parents=True, exist_ok=True)
+    stage = out_dir / "pkg" / name
+    if out_root not in stage.resolve().parents:
+        raise SystemExit(f"error: staging path escapes output directory: {stage}")
+    if stage.exists() or stage.is_symlink():
+        if stage.is_symlink() or not stage.is_dir():
+            raise SystemExit(f"error: staging path is not a directory: {stage}")
+        if out_root not in stage.resolve().parents:
+            raise SystemExit(f"error: staging path escapes output directory: {stage}")
+        _remove_regular_tree(stage)
+    stage.mkdir()
+    return stage
+
+
+def _write_zip(archive_path: pathlib.Path, stage: pathlib.Path, name: str) -> None:
+    entries = [pathlib.PurePosixPath(relative) for relative in RELEASE_FILES]
+    entries.extend(
+        (
+            pathlib.PurePosixPath("LICENSE.txt"),
+            pathlib.PurePosixPath("README.txt"),
+            pathlib.PurePosixPath("licenses/REXGLUE-LICENSE.txt"),
+        )
+    )
+    entries.sort()
+
+    with zipfile.ZipFile(
+        archive_path,
+        "w",
+        compression=zipfile.ZIP_DEFLATED,
+        compresslevel=9,
+    ) as archive:
+        root_info = zipfile.ZipInfo(f"{name}/")
+        root_info.date_time = (1980, 1, 1, 0, 0, 0)
+        root_info.create_system = 0
+        root_info.external_attr = (stat.S_IFDIR | 0o755) << 16
+        archive.writestr(root_info, b"")
+
+        for relative in entries:
+            source = stage / pathlib.Path(*relative.parts)
+            _regular_file(source, str(relative))
+            info = zipfile.ZipInfo(f"{name}/{relative.as_posix()}")
+            info.date_time = (1980, 1, 1, 0, 0, 0)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.create_system = 0
+            info.external_attr = (stat.S_IFREG | 0o644) << 16
+            archive.writestr(info, source.read_bytes(), compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+
+        game_info = zipfile.ZipInfo(f"{name}/game/")
+        game_info.date_time = (1980, 1, 1, 0, 0, 0)
+        game_info.create_system = 0
+        game_info.external_attr = (stat.S_IFDIR | 0o755) << 16
+        archive.writestr(game_info, b"")
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+    version = read_version()
+    name = f"{PACKAGE_NAME}-v{version}-{args.platform}-{args.arch}"
+
+    build_dir = args.build_dir.resolve()
+    if _is_reparse_point(build_dir) or not build_dir.is_dir():
+        raise SystemExit(f"error: Release build directory is missing: {build_dir}")
+
+    stage = _safe_stage(args.out_dir, name)
+    missing: list[str] = []
+    for relative in RELEASE_FILES:
+        source = build_dir / relative
+        if _is_reparse_point(source) or not source.is_file():
+            missing.append(str(source))
+            continue
+        _copy_regular_file(source, stage / relative, relative)
+    if missing:
+        raise SystemExit("error: missing Release binaries:\n  " + "\n  ".join(missing))
+
+    _copy_regular_file(REPO / "scripts" / "packaging" / "README.txt", stage / "README.txt", "README.txt")
+    _copy_regular_file(REPO / "LICENSE", stage / "LICENSE.txt", "LICENSE")
+    _copy_regular_file(
+        REPO / "REXGLUE-LICENSE.txt",
+        stage / "licenses" / "REXGLUE-LICENSE.txt",
+        "licenses/REXGLUE-LICENSE.txt",
+    )
+    (stage / "game").mkdir()
+
+    for staged in stage.rglob("*"):
+        if _is_reparse_point(staged):
+            raise SystemExit(f"error: reparse point staged: {staged}")
+        if staged.is_file() and staged.suffix.lower() in FORBIDDEN_INPUT_SUFFIXES:
+            raise SystemExit(f"error: forbidden file staged: {staged}")
+
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+    archive_path = args.out_dir / f"{name}.zip"
+    if archive_path.exists() and _is_reparse_point(archive_path):
+        raise SystemExit(f"error: archive path is a reparse point: {archive_path}")
+    _write_zip(archive_path, stage, name)
+    print(f"packaged: {archive_path}")
+
+
+if __name__ == "__main__":
+    main()

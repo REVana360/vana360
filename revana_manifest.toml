@@ -1,0 +1,44 @@
+# ReXGlue manifest for the single supported Vana360 module graph.
+
+[project]
+name = "revana"
+sdk_version = "0.10.0"
+game_root = "game"
+
+[entrypoint]
+file_path = "game/PlayOnline/GameExecContent0001.xex"
+out_directory_path = "generated/gameexeccontent0001"
+includes = []
+
+[[modules]]
+guest_path = "polcorecontent.xex"
+file_path = "game/PlayOnline/PolCoreContent.xex"
+out_directory_path = "generated/polcorecontent"
+includes = [
+    "config/polcorecontent_functions.toml",
+    "config/polcorecontent_hooks.toml",
+]
+
+[[modules]]
+guest_path = "ffxi.dll"
+file_path = "game/0001/FFXi.dll"
+out_directory_path = "generated/ffxi"
+includes = [
+    "config/ffxi_functions.toml",
+    "config/ffxi_hooks.toml",
+]
+
+[[modules]]
+guest_path = "ffximain.dll"
+file_path = "game/0001/FFXiMain.dll"
+out_directory_path = "generated/ffximain"
+includes = [
+    "config/ffximain_functions.toml",
+    "config/ffximain_hooks.toml",
+]
+
+[[modules]]
+guest_path = "patch.xex"
+file_path = "game/0001/patch.xex"
+out_directory_path = "generated/patch"
+includes = ["config/patch_functions.toml"]

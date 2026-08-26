@@ -1,0 +1,69 @@
+[[midasm_hook]]
+address = 0x8246FD08
+name = "RevanaSelectPolCoreEnglish"
+
+# These passive probes distinguish the two 2009 status mappers when internal
+# service status 10093 is translated to the user-facing POL-2071 error.
+[[midasm_hook]]
+address = 0x82462C34
+name = "RevanaTracePolError2071MapperA"
+
+[[midasm_hook]]
+address = 0x8246586C
+name = "RevanaTracePolError2071MapperB"
+
+# PolCore also synthesizes -2071 at these three returns when its shared
+# service state has not been initialized. Keep them distinct to recover the
+# live caller without changing the return value.
+[[midasm_hook]]
+address = 0x82465C88
+name = "RevanaTracePolServiceOpenEntry"
+
+[[midasm_hook]]
+address = 0x82465CDC
+name = "RevanaTracePolError2071UninitializedA"
+
+[[midasm_hook]]
+address = 0x82465DDC
+name = "RevanaTracePolError2071UninitializedB"
+
+[[midasm_hook]]
+address = 0x82465F20
+name = "RevanaTracePolError2071UninitializedC"
+
+# This state machine builds and sends a 40-byte pp000.pol.com configuration
+# request, then receives its 24-byte reply. These passive probes preserve the
+# guest buffers and record the exact Xbox exchange for the direct-mode bridge.
+[[midasm_hook]]
+address = 0x82476538
+name = "RevanaTraceConfigHandshakeState"
+
+[[midasm_hook]]
+address = 0x8247683C
+name = "RevanaTraceConfigHandshakeReturn"
+
+[[midasm_hook]]
+address = 0x824766CC
+name = "RevanaTraceConfigRequest"
+
+[[midasm_hook]]
+address = 0x824767BC
+name = "RevanaTraceConfigResponse"
+
+[[midasm_hook]]
+address = 0x82479A44
+name = "RevanaTraceConfigServiceState"
+
+[[midasm_hook]]
+address = 0x82482110
+name = "RevanaTraceConfigParserState"
+
+[[midasm_hook]]
+address = 0x82479B18
+name = "RevanaTraceConfigFollowupState"
+
+# The second configuration consumer uploads a 416-byte local record, receives
+# a 24-byte result, and then walks the returned item stream.
+[[midasm_hook]]
+address = 0x824831CC
+name = "RevanaTraceConfigTransferState"
