@@ -6,8 +6,9 @@ Fantasy XI, using the ReXGlue runtime and an external LandSandBoat server.
 PACKAGE CONTENTS
 
 This archive contains the Vana360 executable, generated guest modules, and the
-ReXGlue runtime libraries. It intentionally contains no game data, generated
-source, retail executable, DAT files, or ISO image.
+ReXGlue runtime libraries. build-info.json identifies the exact public
+title and SDK inputs used for this package. It intentionally contains no game
+data, generated source, retail executable, DAT files, or ISO image.
 
 REQUIREMENTS
 

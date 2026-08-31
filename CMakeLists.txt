@@ -56,6 +56,7 @@ if(REVANA_BUILD_TITLE)
     endif()
 
     include(generated/rexglue.cmake)
+    include(cmake/build_info.cmake)
 
     add_library(revana_hooks SHARED src/runtime/revana_hooks.cpp)
     set_target_properties(revana_hooks PROPERTIES
@@ -72,6 +73,7 @@ if(REVANA_BUILD_TITLE)
         add_executable(revana src/main.cpp src/runtime/lobby_bridge.cpp)
     endif()
     rexglue_setup_target(revana GPU_PLUGINS xenos)
+    revana_add_build_info(revana)
     target_include_directories(revana PRIVATE src)
     target_link_libraries(revana PRIVATE revana_hooks revana_login)
     foreach(module FFXiMain FFXi PolCoreContent)

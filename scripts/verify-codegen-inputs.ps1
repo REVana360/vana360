@@ -72,10 +72,10 @@ if ($ContractOnly) {
 
 $rootItem = Get-Item -LiteralPath $Root -Force
 if (-not $rootItem.PSIsContainer) {
-    throw "Codegen input root is not a directory: $Root"
+    throw 'Codegen input root is not a directory'
 }
 if ($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
-    throw "Codegen input root is a reparse point: $($rootItem.FullName)"
+    throw 'Codegen input root is a reparse point'
 }
 
 $rootPath = $rootItem.FullName.TrimEnd('\')
@@ -100,7 +100,7 @@ foreach ($check in $checks) {
         if (Test-Path -LiteralPath $ancestor) {
             $ancestorItem = Get-Item -LiteralPath $ancestor -Force
             if ($ancestorItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
-                throw "Codegen input crosses a reparse point: $ancestor"
+                throw 'Codegen input crosses a reparse point'
             }
         }
         if ($ancestor.Equals($rootPath, [StringComparison]::OrdinalIgnoreCase)) {
@@ -126,4 +126,4 @@ foreach ($check in $checks) {
     $verifiedBytes += $item.Length
 }
 
-Write-Output "codegen-inputs: verified files=$($checks.Count) bytes=$verifiedBytes root=$rootPath"
+Write-Output "codegen-inputs: verified files=$($checks.Count) bytes=$verifiedBytes"

@@ -71,7 +71,7 @@ try {
     $sdkLock = Get-Content -LiteralPath (Join-Path $repo 'rexglue-sdk.lock.json') -Raw |
         ConvertFrom-Json
     if ($sdkLock.repository -cne 'https://github.com/REVana360/vana360-sdk' -or
-        $sdkLock.branch -cne 'vana360-sdk' -or
+        $sdkLock.branch -cne 'main' -or
         $sdkLock.commit -cnotmatch '^[0-9a-f]{40}$') {
         Add-Failure 'rexglue-sdk.lock.json does not identify the maintained SDK fork'
     }
@@ -79,16 +79,50 @@ try {
     Add-Failure "SDK lock validation failed: $($_.Exception.Message)"
 }
 
+try {
+    $serverLock = Get-Content -LiteralPath (Join-Path $repo 'vana360-lsb.lock.json') -Raw |
+        ConvertFrom-Json
+    if ($serverLock.repository -cne 'https://github.com/REVana360/vana360-lsb' -or
+        $serverLock.branch -cne 'main' -or
+        $serverLock.commit -cnotmatch '^[0-9a-f]{40}$') {
+        Add-Failure 'vana360-lsb.lock.json does not identify the maintained server fork'
+    }
+} catch {
+    Add-Failure "Server lock validation failed: $($_.Exception.Message)"
+}
+
+$requiredClangFormatMajor = 22
 $clangFormat = Get-Command clang-format -ErrorAction SilentlyContinue
-$clangFormatStatus = 'skipped'
-if ($clangFormat) {
-    $clangFormatStatus = 'clean'
-    foreach ($file in @($paths | Where-Object { $_ -match '(?i)\.(cpp|h)$' })) {
-        $formatOutput = @(& $clangFormat.Source --dry-run --Werror $file 2>&1)
+$clangFormatStatus = 'failed'
+if (-not $clangFormat) {
+    Add-Failure "clang-format $requiredClangFormatMajor.x is required but was not found on PATH"
+} else {
+    try {
+        $versionOutput = @(& $clangFormat.Source --version 2>&1)
         if ($LASTEXITCODE -ne 0) {
-            $clangFormatStatus = 'failed'
-            Add-Failure "clang-format failed: $(Relative-Path $file): $($formatOutput -join ' ')"
+            Add-Failure "clang-format version check failed: $($versionOutput -join ' ')"
+        } else {
+            $versionText = $versionOutput -join "`n"
+            $versionMatch = [regex]::Match(
+                $versionText,
+                'clang-format version (?<version>\d+\.\d+\.\d+)')
+            if (-not $versionMatch.Success) {
+                Add-Failure "clang-format version check returned an unrecognized version: $versionText"
+            } elseif (-not $versionMatch.Groups['version'].Value.StartsWith("$requiredClangFormatMajor.")) {
+                Add-Failure "clang-format $requiredClangFormatMajor.x is required; found $($versionMatch.Groups['version'].Value)"
+            } else {
+                $clangFormatStatus = 'clean'
+                foreach ($file in @($paths | Where-Object { $_ -match '(?i)\.(cpp|h)$' })) {
+                    $formatOutput = @(& $clangFormat.Source --dry-run --Werror $file 2>&1)
+                    if ($LASTEXITCODE -ne 0) {
+                        $clangFormatStatus = 'failed'
+                        Add-Failure "clang-format failed: $(Relative-Path $file): $($formatOutput -join ' ')"
+                    }
+                }
+            }
         }
+    } catch {
+        Add-Failure "clang-format version check failed: $($_.Exception.Message)"
     }
 }
 
@@ -220,4 +254,4 @@ if ($failures.Count -gt 0) {
     exit 1
 }
 
-Write-Output "verify: passed files=$($listed.Count) private-paths=1 retail-generated=1 ASCII=1 JSON=1 TOML=1 Python=1 Python-tests=$pythonTestStatus PowerShell=1 Markdown=1 manifest-graph=1 supported-disc=1 codegen-inputs=1 sdk-lock=1 clang-format=$clangFormatStatus git-whitespace=1"
+Write-Output "verify: passed files=$($listed.Count) private-paths=1 retail-generated=1 ASCII=1 JSON=1 TOML=1 Python=1 Python-tests=$pythonTestStatus PowerShell=1 Markdown=1 manifest-graph=1 supported-disc=1 codegen-inputs=1 sdk-lock=1 server-lock=1 clang-format=$clangFormatStatus git-whitespace=1"

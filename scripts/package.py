@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import re
 import shutil
@@ -12,6 +13,8 @@ import zipfile
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 PACKAGE_NAME = "vana360"
+BUILD_INFO_NAME = "revana-build-info.json"
+PACKAGE_BUILD_INFO_NAME = "build-info.json"
 
 # These are the Release outputs of the `revana` host and its generated module
 # targets.  Runtime-loaded SDK libraries are listed explicitly as well.
@@ -26,6 +29,22 @@ RELEASE_FILES = (
     "rexgpu-xenos.dll",
 )
 
+BUILD_INFO_FIELDS = {
+    "schema",
+    "product",
+    "version",
+    "title_commit",
+    "dirty",
+    "sdk_commit",
+    "sdk_api_version",
+    "platform",
+    "architecture",
+    "configuration",
+    "compiler",
+    "graphics_backend",
+    "supported_input_profile",
+}
+
 FORBIDDEN_INPUT_SUFFIXES = {
     ".dat",
     ".iso",
@@ -37,14 +56,75 @@ FORBIDDEN_INPUT_SUFFIXES = {
 }
 
 
-def read_version() -> str:
-    """Read the three-component version declared by the Vana360 project."""
+def _build_info_matches(build_info: dict, field: str, pattern: str) -> bool:
+    value = build_info[field]
+    return isinstance(value, str) and re.fullmatch(pattern, value) is not None
 
-    text = (REPO / "CMakeLists.txt").read_text(encoding="ascii")
-    match = re.search(r"^project\(\s*revana\s+VERSION\s+(\d+\.\d+\.\d+)\b", text, re.MULTILINE)
-    if not match:
-        raise SystemExit("error: project version not found in CMakeLists.txt")
-    return match.group(1)
+
+def _unique_object(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate build info field")
+        result[key] = value
+    return result
+
+
+def read_build_info(
+    build_dir: pathlib.Path, platform: str, architecture: str
+) -> tuple[dict, bytes]:
+    """Read and validate the build-owned public information record."""
+
+    path = build_dir / BUILD_INFO_NAME
+    _regular_file(path, BUILD_INFO_NAME)
+    raw = path.read_bytes()
+    try:
+        build_info = json.loads(raw.decode("ascii"), object_pairs_hook=_unique_object)
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+        raise SystemExit("error: build info is not valid ASCII JSON") from error
+
+    if not isinstance(build_info, dict) or set(build_info) != BUILD_INFO_FIELDS:
+        raise SystemExit("error: build info fields are not exact")
+    if build_info["schema"] != 1 or build_info["product"] != PACKAGE_NAME:
+        raise SystemExit("error: unsupported build info schema")
+    if not _build_info_matches(build_info, "version", r"\d+\.\d+\.\d+"):
+        raise SystemExit("error: invalid build version")
+    if not _build_info_matches(build_info, "title_commit", r"[0-9a-f]{40}"):
+        raise SystemExit("error: invalid title commit")
+    if not isinstance(build_info["dirty"], bool):
+        raise SystemExit("error: invalid title source state")
+    if not _build_info_matches(build_info, "sdk_commit", r"[0-9a-f]{40}"):
+        raise SystemExit("error: invalid SDK commit")
+    if not _build_info_matches(build_info, "sdk_api_version", r"\d+\.\d+\.\d+"):
+        raise SystemExit("error: invalid SDK API version")
+    if build_info["platform"] != platform or build_info["architecture"] != architecture:
+        raise SystemExit("error: package target differs from build info")
+    for field in ("configuration", "compiler"):
+        if not _build_info_matches(build_info, field, r"[A-Za-z0-9_.+-]+"):
+            raise SystemExit(f"error: invalid {field}")
+    if build_info["graphics_backend"] != "xenos":
+        raise SystemExit("error: unsupported graphics backend")
+    if not _build_info_matches(
+        build_info, "supported_input_profile", r"[a-z0-9]+(?:-[a-z0-9]+)+"
+    ):
+        raise SystemExit("error: invalid supported input profile")
+    return build_info, raw
+
+
+def build_info_summary(build_info: dict) -> str:
+    source_state = "dirty" if build_info["dirty"] else "clean"
+    return (
+        f"vana360 v{build_info['version']} "
+        f"title={build_info['title_commit']}-{source_state} "
+        f"sdk={build_info['sdk_commit']} "
+        f"api={build_info['sdk_api_version']} "
+        f"platform={build_info['platform']} "
+        f"arch={build_info['architecture']} "
+        f"config={build_info['configuration']} "
+        f"compiler={build_info['compiler']} "
+        f"backend={build_info['graphics_backend']} "
+        f"input={build_info['supported_input_profile']}"
+    )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -139,6 +219,7 @@ def _write_zip(archive_path: pathlib.Path, stage: pathlib.Path, name: str) -> No
     entries = [pathlib.PurePosixPath(relative) for relative in RELEASE_FILES]
     entries.extend(
         (
+            pathlib.PurePosixPath(PACKAGE_BUILD_INFO_NAME),
             pathlib.PurePosixPath("LICENSE.txt"),
             pathlib.PurePosixPath("README.txt"),
             pathlib.PurePosixPath("licenses/REXGLUE-LICENSE.txt"),
@@ -177,12 +258,13 @@ def _write_zip(archive_path: pathlib.Path, stage: pathlib.Path, name: str) -> No
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
-    version = read_version()
-    name = f"{PACKAGE_NAME}-v{version}-{args.platform}-{args.arch}"
 
     build_dir = args.build_dir.resolve()
     if _is_reparse_point(build_dir) or not build_dir.is_dir():
         raise SystemExit(f"error: Release build directory is missing: {build_dir}")
+
+    build_info, build_info_bytes = read_build_info(build_dir, args.platform, args.arch)
+    name = f"{PACKAGE_NAME}-v{build_info['version']}-{args.platform}-{args.arch}"
 
     stage = _safe_stage(args.out_dir, name)
     missing: list[str] = []
@@ -194,6 +276,9 @@ def main(argv: list[str] | None = None) -> None:
         _copy_regular_file(source, stage / relative, relative)
     if missing:
         raise SystemExit("error: missing Release binaries:\n  " + "\n  ".join(missing))
+    executable = build_dir / "revana.exe"
+    if build_info_summary(build_info).encode("ascii") not in executable.read_bytes():
+        raise SystemExit("error: executable and build info differ")
 
     _copy_regular_file(REPO / "scripts" / "packaging" / "README.txt", stage / "README.txt", "README.txt")
     _copy_regular_file(REPO / "LICENSE", stage / "LICENSE.txt", "LICENSE")
@@ -202,6 +287,7 @@ def main(argv: list[str] | None = None) -> None:
         stage / "licenses" / "REXGLUE-LICENSE.txt",
         "licenses/REXGLUE-LICENSE.txt",
     )
+    (stage / PACKAGE_BUILD_INFO_NAME).write_bytes(build_info_bytes)
     (stage / "game").mkdir()
 
     for staged in stage.rglob("*"):

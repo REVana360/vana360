@@ -16,7 +16,6 @@ jobs:
   build:
     name: Build
     uses: ./.github/workflows/build.yml
-    with:
-      publish_mode: artifact
     secrets:
+      ASSETS_COMMIT: ${{ secrets.ASSETS_COMMIT }}
       ASSETS_TOKEN: ${{ secrets.ASSETS_TOKEN }}

@@ -12,6 +12,7 @@
 #include <rex/system/xam/user_profile.h>
 #include <rex/system/xsocket.h>
 
+#include "build_info.h"
 #include "runtime/lobby_bridge.h"
 #include "runtime/revana_hooks.h"
 
@@ -63,6 +64,11 @@ public:
         RevanaSetGuestTraceHooksEnabled(
             RevanaFlagRequested("REVANA_TRACE_STARTUP"));
         config.gpu_plugin = "xenos";
+    }
+
+    void OnPostInitLogging() override
+    {
+        REXLOG_INFO("{}", revana::build_info::kSummary);
     }
 
     void OnLoadXexImage(std::string& xex_image) override

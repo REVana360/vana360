@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "product": "vana360",
+  "version": "@REVANA_VERSION@",
+  "title_commit": "@REVANA_TITLE_COMMIT@",
+  "dirty": @REVANA_DIRTY_JSON@,
+  "sdk_commit": "@REVANA_SDK_COMMIT@",
+  "sdk_api_version": "@REVANA_SDK_API_VERSION@",
+  "platform": "@REVANA_PLATFORM@",
+  "architecture": "@REVANA_ARCHITECTURE@",
+  "configuration": "@REVANA_CONFIGURATION@",
+  "compiler": "@REVANA_COMPILER@",
+  "graphics_backend": "@REVANA_GRAPHICS_BACKEND@",
+  "supported_input_profile": "@REVANA_INPUT_PROFILE@"
+}

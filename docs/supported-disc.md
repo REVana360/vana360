@@ -5,6 +5,7 @@ Final Fantasy XI: Ultimate Collection for Xbox 360, USA, Redump disc 63782.
 
 | Property | Required value |
 |---|---|
+| Profile ID | `ffxi-ultimate-collection-usa-redump-63782` |
 | ISO size | `7,838,695,424` bytes |
 | SHA-256 | `5fd1258ee10fae4bf27d685868dde79ef753da01722350f86c8291fe5235934f` |
 | XGD2 media ID | `1fdb42f7` |

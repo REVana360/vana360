@@ -2,12 +2,9 @@ name: Build
 
 on:
   workflow_call:
-    inputs:
-      publish_mode:
-        description: artifact or release
-        required: true
-        type: string
     secrets:
+      ASSETS_COMMIT:
+        required: true
       ASSETS_TOKEN:
         required: true
 
@@ -64,7 +61,7 @@ jobs:
           if ($lock.repository -cne 'https://github.com/REVana360/vana360-sdk') {
             throw 'Unexpected SDK repository in rexglue-sdk.lock.json'
           }
-          if ($lock.branch -cne 'vana360-sdk') {
+          if ($lock.branch -cne 'main') {
             throw 'Unexpected SDK branch in rexglue-sdk.lock.json'
           }
           if ($lock.commit -cnotmatch '^[0-9a-f]{40}$') {
@@ -112,6 +109,7 @@ jobs:
       - name: Fetch codegen input
         shell: pwsh
         env:
+          ASSETS_COMMIT: ${{ secrets.ASSETS_COMMIT }}
           GH_TOKEN: ${{ secrets.ASSETS_TOKEN }}
           GIT_CONFIG_COUNT: '1'
           GIT_CONFIG_KEY_0: credential.helper
@@ -121,6 +119,10 @@ jobs:
           if (-not $env:GH_TOKEN) {
             throw 'ASSETS_TOKEN secret is empty or missing'
           }
+          if ($env:ASSETS_COMMIT -cnotmatch '^[0-9a-f]{40}$') {
+            throw 'ASSETS_COMMIT secret is empty or invalid'
+          }
+          Write-Output "::add-mask::$env:ASSETS_COMMIT"
           if ($env:ASSETS_REPO -cne
               'https://github.com/REVana360/vana360-private-assets') {
             throw 'Unexpected private asset repository'
@@ -136,9 +138,21 @@ jobs:
             'game/0001/patch.xex'
           )
           $assetsRoot = Join-Path $env:RUNNER_TEMP 'vana360-private-assets'
-          git clone --quiet --depth 1 --branch main --single-branch `
+          git clone --quiet --depth 1 --no-checkout `
             $env:ASSETS_REPO $assetsRoot
           if ($LASTEXITCODE -ne 0) { throw 'Private asset clone failed' }
+          git -C $assetsRoot fetch --quiet --depth 1 origin `
+            $env:ASSETS_COMMIT
+          if ($LASTEXITCODE -ne 0) { throw 'Private asset revision fetch failed' }
+          git -C $assetsRoot checkout --quiet --detach `
+            $env:ASSETS_COMMIT
+          if ($LASTEXITCODE -ne 0) { throw 'Private asset checkout failed' }
+          $actualAssetCommit = git -C $assetsRoot rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or
+              $actualAssetCommit -cne $env:ASSETS_COMMIT) {
+            throw 'Private asset revision verification failed'
+          }
+          Write-Output 'Private asset revision verified'
           $lfsInclude = $assetPaths -join ','
           git -C $assetsRoot lfs pull `
             --include=$lfsInclude --exclude=''
@@ -222,13 +236,23 @@ jobs:
           python scripts/package.py --platform windows --arch x64
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Verify package privacy
+        shell: pwsh
+        env:
+          ASSETS_COMMIT: ${{ secrets.ASSETS_COMMIT }}
+        run: |
+          python scripts/verify-package-privacy.py `
+            --archive (Get-Item out/vana360-v*-windows-x64.zip).FullName `
+            --forbidden-env ASSETS_COMMIT
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Upload archive
         uses: actions/upload-artifact@v7
         with:
           name: vana360-windows-x64
           path: out/vana360-v*-windows-x64.zip
           if-no-files-found: error
-          retention-days: ${{ inputs.publish_mode == 'release' && 1 || 14 }}
+          retention-days: 14
 
       - name: Show sccache statistics
         if: always()
