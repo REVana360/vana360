@@ -13,7 +13,6 @@
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "clang++",
-        "REVANA_BUILD_TESTS": true,
         "REVANA_BUILD_TITLE": false
       },
       "condition": {

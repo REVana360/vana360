@@ -15,6 +15,8 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 PACKAGE_NAME = "vana360"
 BUILD_INFO_NAME = "revana-build-info.json"
 PACKAGE_BUILD_INFO_NAME = "build-info.json"
+PACKAGE_PLATFORM = "windows"
+PACKAGE_ARCHITECTURE = "x64"
 
 # These are the Release outputs of the `revana` host and its generated module
 # targets.  Runtime-loaded SDK libraries are listed explicitly as well.
@@ -70,9 +72,7 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict:
     return result
 
 
-def read_build_info(
-    build_dir: pathlib.Path, platform: str, architecture: str
-) -> tuple[dict, bytes]:
+def read_build_info(build_dir: pathlib.Path) -> tuple[dict, bytes]:
     """Read and validate the build-owned public information record."""
 
     path = build_dir / BUILD_INFO_NAME
@@ -97,7 +97,10 @@ def read_build_info(
         raise SystemExit("error: invalid SDK commit")
     if not _build_info_matches(build_info, "sdk_api_version", r"\d+\.\d+\.\d+"):
         raise SystemExit("error: invalid SDK API version")
-    if build_info["platform"] != platform or build_info["architecture"] != architecture:
+    if (
+        build_info["platform"] != PACKAGE_PLATFORM
+        or build_info["architecture"] != PACKAGE_ARCHITECTURE
+    ):
         raise SystemExit("error: package target differs from build info")
     for field in ("configuration", "compiler"):
         if not _build_info_matches(build_info, field, r"[A-Za-z0-9_.+-]+"):
@@ -129,18 +132,6 @@ def build_info_summary(build_info: dict) -> str:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--platform",
-        choices=("windows",),
-        default="windows",
-        help="package platform (Windows is the only supported platform)",
-    )
-    parser.add_argument(
-        "--arch",
-        choices=("x64",),
-        default="x64",
-        help="package architecture (x64 is the only supported architecture)",
-    )
     parser.add_argument(
         "--build-dir",
         type=pathlib.Path,
@@ -263,8 +254,8 @@ def main(argv: list[str] | None = None) -> None:
     if _is_reparse_point(build_dir) or not build_dir.is_dir():
         raise SystemExit(f"error: Release build directory is missing: {build_dir}")
 
-    build_info, build_info_bytes = read_build_info(build_dir, args.platform, args.arch)
-    name = f"{PACKAGE_NAME}-v{build_info['version']}-{args.platform}-{args.arch}"
+    build_info, build_info_bytes = read_build_info(build_dir)
+    name = f"{PACKAGE_NAME}-v{build_info['version']}-{PACKAGE_PLATFORM}-{PACKAGE_ARCHITECTURE}"
 
     stage = _safe_stage(args.out_dir, name)
     missing: list[str] = []

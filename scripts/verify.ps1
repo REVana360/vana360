@@ -220,11 +220,6 @@ foreach ($file in @($paths | Where-Object { $_ -match '(?i)\.md$' })) {
     }
 }
 
-$discOutput = @(& (Join-Path $PSScriptRoot 'verify-disc.ps1') -SelfTest 2>&1)
-if ($LASTEXITCODE -ne 0) {
-    Add-Failure "supported-disc self-test failed: $($discOutput -join ' ')"
-}
-
 try {
     $codegenInputOutput = @(& (Join-Path $PSScriptRoot 'verify-codegen-inputs.ps1') `
         -ContractOnly 2>&1)
@@ -254,4 +249,4 @@ if ($failures.Count -gt 0) {
     exit 1
 }
 
-Write-Output "verify: passed files=$($listed.Count) private-paths=1 retail-generated=1 ASCII=1 JSON=1 TOML=1 Python=1 Python-tests=$pythonTestStatus PowerShell=1 Markdown=1 manifest-graph=1 supported-disc=1 codegen-inputs=1 sdk-lock=1 server-lock=1 clang-format=$clangFormatStatus git-whitespace=1"
+Write-Output "verify: passed files=$($listed.Count) private-paths=1 retail-generated=1 ASCII=1 JSON=1 TOML=1 Python=1 Python-tests=$pythonTestStatus PowerShell=1 Markdown=1 manifest-graph=1 codegen-inputs=1 sdk-lock=1 server-lock=1 clang-format=$clangFormatStatus git-whitespace=1"

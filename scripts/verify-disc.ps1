@@ -1,10 +1,7 @@
-[CmdletBinding(DefaultParameterSetName = 'Verify')]
+[CmdletBinding()]
 param(
-    [Parameter(Mandatory, ParameterSetName = 'Verify')]
-    [string]$Path,
-
-    [Parameter(Mandatory, ParameterSetName = 'SelfTest')]
-    [switch]$SelfTest
+    [Parameter(Mandatory)]
+    [string]$Path
 )
 
 Set-StrictMode -Version Latest
@@ -12,17 +9,6 @@ $ErrorActionPreference = 'Stop'
 
 $expectedSize = 7838695424L
 $expectedHash = '5fd1258ee10fae4bf27d685868dde79ef753da01722350f86c8291fe5235934f'
-
-if ($SelfTest) {
-    if ($expectedSize -ne 7838695424L -or $expectedHash.Length -ne 64) {
-        throw 'supported-disc constants are invalid'
-    }
-    if ($expectedHash -cne $expectedHash.ToLowerInvariant()) {
-        throw 'supported-disc hash must be lowercase hexadecimal'
-    }
-    Write-Output 'verify-disc: self-test passed'
-    exit 0
-}
 
 $resolved = Resolve-Path -LiteralPath $Path -ErrorAction Stop
 $item = Get-Item -LiteralPath $resolved.Path

@@ -195,20 +195,5 @@ class PackageTests(unittest.TestCase):
             self.assertIn("reparse point in staging tree", second.stderr)
             self.assertEqual(marker.read_text(encoding="ascii"), "keep")
 
-    def test_non_windows_platform_is_rejected(self):
-        temp, _, build, output = self._fixture()
-        with temp:
-            result = self._run(build, output, "--platform", "linux")
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("invalid choice", result.stderr)
-
-    def test_non_x64_architecture_is_rejected(self):
-        temp, _, build, output = self._fixture()
-        with temp:
-            result = self._run(build, output, "--arch", "arm64")
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("invalid choice", result.stderr)
-
-
 if __name__ == "__main__":
     unittest.main()

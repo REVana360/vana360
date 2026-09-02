@@ -4,7 +4,6 @@ project(revana VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(REVANA_BUILD_TESTS "Build Vana360 native tests" ON)
 option(REVANA_BUILD_TITLE "Build the generated Vana360 title" OFF)
 set(REVANA_REXSDK_DIR "${CMAKE_CURRENT_LIST_DIR}/../vana360-sdk"
     CACHE PATH "Path to the pinned ReXGlue SDK checkout")
@@ -29,25 +28,22 @@ if(NOT EXISTS "${REVANA_JSON_INCLUDE}/nlohmann/json.hpp")
 endif()
 target_include_directories(revana_login PRIVATE "${REVANA_JSON_INCLUDE}")
 
-if(REVANA_BUILD_TESTS)
-    enable_testing()
+enable_testing()
 
-    add_executable(revana_lobby_packets_test tests/lobby_packets_test.cpp)
-    target_link_libraries(revana_lobby_packets_test PRIVATE revana_login)
-    add_test(NAME revana_lobby_packets COMMAND revana_lobby_packets_test)
+add_executable(revana_lobby_packets_test tests/lobby_packets_test.cpp)
+target_link_libraries(revana_lobby_packets_test PRIVATE revana_login)
+add_test(NAME revana_lobby_packets COMMAND revana_lobby_packets_test)
 
-    add_executable(revana_lobby_client_test tests/lobby_client_test.cpp)
-    target_link_libraries(revana_lobby_client_test PRIVATE revana_login)
-    if(WIN32)
-        target_link_libraries(revana_lobby_client_test PRIVATE ws2_32)
-    endif()
-    add_test(NAME revana_lobby_client COMMAND revana_lobby_client_test)
-
-    add_executable(revana_auth_protocol_test tests/auth_protocol_test.cpp)
-    target_link_libraries(revana_auth_protocol_test PRIVATE revana_login)
-    add_test(NAME revana_auth_protocol COMMAND revana_auth_protocol_test)
-
+add_executable(revana_lobby_client_test tests/lobby_client_test.cpp)
+target_link_libraries(revana_lobby_client_test PRIVATE revana_login)
+if(WIN32)
+    target_link_libraries(revana_lobby_client_test PRIVATE ws2_32)
 endif()
+add_test(NAME revana_lobby_client COMMAND revana_lobby_client_test)
+
+add_executable(revana_auth_protocol_test tests/auth_protocol_test.cpp)
+target_link_libraries(revana_auth_protocol_test PRIVATE revana_login)
+add_test(NAME revana_auth_protocol COMMAND revana_auth_protocol_test)
 
 if(REVANA_BUILD_TITLE)
     if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/generated/rexglue.cmake")
