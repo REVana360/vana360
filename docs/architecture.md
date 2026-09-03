@@ -35,6 +35,7 @@ map handoff, and world login.
 
 ## Server dependency
 
-Upstream LandSandBoat is not vendored.
-It remains the external server and the authority for the database, protocol, and gameplay.
-The supported server fork and exact revision are in [the server lock](../vana360-lsb.lock.json).
+The maintained `REVana360/vana360-lsb` fork supplies the supported external server.
+Its exact revision is in [the server lock](../vana360-lsb.lock.json).
+Upstream LandSandBoat is not vendored; it remains the upstream reference for the
+server's database, protocol, and gameplay.
