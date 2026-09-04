@@ -131,7 +131,7 @@ $pythonTestStatus = 'skipped'
 if (-not $python) {
     Add-Failure 'python is required for TOML, manifest, and unit-test checks'
 } else {
-    $tomlCode = 'import pathlib,sys,tomllib; [tomllib.loads(pathlib.Path(p).read_text(encoding="ascii")) for p in sys.argv[1:]]'
+    $tomlCode = 'import pathlib,sys,tomllib; [tomllib.loads(pathlib.Path(p).read_text()) for p in sys.argv[1:]]'
     $tomlFiles = @($paths | Where-Object { $_ -match '(?i)\.toml$' })
     $tomlOutput = @(& $python.Source -c $tomlCode @tomlFiles 2>&1)
     if ($LASTEXITCODE -ne 0) {
@@ -144,15 +144,19 @@ if (-not $python) {
     }
 
     $pythonFiles = @($paths | Where-Object { $_ -match '(?i)\.py$' })
-    $astCode = 'import ast,pathlib,sys; [ast.parse(pathlib.Path(p).read_text(encoding="ascii"), filename=p) for p in sys.argv[1:]]'
+    $astCode = 'import ast,pathlib,sys; [ast.parse(pathlib.Path(p).read_text(), filename=p) for p in sys.argv[1:]]'
     $astOutput = @(& $python.Source -c $astCode @pythonFiles 2>&1)
     if ($LASTEXITCODE -ne 0) {
         Add-Failure "Python AST parse failed: $($astOutput -join ' ')"
     }
 
     $testRoot = Join-Path $PSScriptRoot 'tests'
+    $savedErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     $testOutput = @(& $python.Source -B -m unittest discover -s $testRoot -p 'test_*.py' 2>&1)
-    if ($LASTEXITCODE -ne 0) {
+    $testExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $savedErrorActionPreference
+    if ($testExitCode -ne 0) {
         Add-Failure "Python tests failed: $($testOutput -join ' ')"
     } else {
         $pythonTestStatus = 'passed'
@@ -231,12 +235,16 @@ try {
 }
 
 foreach ($cached in @($false, $true)) {
+    $savedErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     if ($cached) {
         $diffOutput = @(& git -C $repo diff --cached --check 2>&1)
     } else {
         $diffOutput = @(& git -C $repo diff --check 2>&1)
     }
-    if ($LASTEXITCODE -ne 0) {
+    $diffExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $savedErrorActionPreference
+    if ($diffExitCode -ne 0) {
         $label = if ($cached) { 'cached git diff' } else { 'git diff' }
         Add-Failure "$label check failed: $($diffOutput -join ' ')"
     }
