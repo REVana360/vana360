@@ -66,6 +66,13 @@ public:
         config.gpu_plugin = "xenos";
     }
 
+    void OnPostSetup() override
+    {
+        rex::ReXApp::OnPostSetup();
+        // Keep GetName() lowercase because it also owns user-data paths.
+        window()->SetTitle("REVana360");
+    }
+
     void OnPostInitLogging() override
     {
         REXLOG_INFO("{}", revana::build_info::kSummary);
