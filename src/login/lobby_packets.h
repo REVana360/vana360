@@ -51,6 +51,8 @@ MakeDataSelectionRequest(const MapSessionKey& map_session_key);
 // selection. The caller owns and must clear the returned key material.
 bool GenerateMapSessionKey(MapSessionKey& map_session_key);
 
+void AdvanceMapSessionKey(MapSessionKey& map_session_key);
+
 // LandSandBoat derives the map Blowfish key by hashing the 20-byte selection
 // key, then zeroing the digest from its first zero byte onward. The Xbox client
 // consumes this 16-byte key during its map handoff.
@@ -91,6 +93,10 @@ struct KeyResponse
 
 std::expected<KeyResponse, ParseError>
 ParseKeyResponse(std::span<const uint8_t> bytes);
+
+// The direct Xbox bridge must not release the guest view receive until the
+// complete authenticated key response is available.
+bool IsCompleteKeyResponse(std::span<const uint8_t> bytes);
 
 struct CharacterSummary
 {

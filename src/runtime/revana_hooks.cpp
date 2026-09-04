@@ -1,5 +1,7 @@
 #include "revana_hooks.h"
 
+#include <login/lobby_packets.h>
+
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -8,6 +10,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <mutex>
 #include <thread>
 
 #if defined(_WIN32)
@@ -27,55 +30,61 @@
 namespace
 {
 
-std::atomic_bool         g_guest_trace_hooks_enabled              = false;
-std::atomic_uint32_t     g_guest_trace_hook_count                 = 0;
-std::atomic_bool         g_lobby_controller_ready                 = false;
-std::atomic_uint32_t     g_lobby_controller_object                = 0;
-std::atomic_bool         g_slot1852_registration_stub_enabled     = false;
-std::atomic_uint32_t     g_slot1852_registration_thunk            = 0;
-std::atomic_bool         g_direct_pol_resolver_enabled            = false;
-std::atomic_uint32_t     g_direct_pol_resolver_ipv4               = 0;
-std::atomic_uint32_t     g_direct_pol_resolver_begin_thunk        = 0;
-std::atomic_uint32_t     g_direct_pol_resolver_poll_thunk         = 0;
-std::atomic_uint32_t     g_direct_pol_resolver_cancel_thunk       = 0;
-std::atomic_uint32_t     g_direct_pol_resolver_begin_original     = 0;
-std::atomic_uint32_t     g_direct_pol_resolver_poll_original      = 0;
-std::atomic_uint32_t     g_direct_pol_resolver_cancel_original    = 0;
-std::atomic_uint64_t     g_config_handshake_state                 = 0;
-std::atomic_uint64_t     g_config_service_state                   = 0;
-std::atomic_uint64_t     g_config_parser_state                    = 0;
-std::atomic_uint64_t     g_config_transfer_state                  = 0;
-std::atomic_uint64_t     g_post_selection_service_open_result     = UINT64_MAX;
-std::atomic_uint64_t     g_post_selection_service_poll_result     = UINT64_MAX;
-std::atomic_uint64_t     g_post_selection_association_open_result = UINT64_MAX;
-std::atomic_uint64_t     g_post_selection_association_poll_result = UINT64_MAX;
-std::atomic_uint32_t     g_phase6_readiness_flags                 = UINT32_MAX;
-std::atomic_uint64_t     g_zone_load_sequence_state               = UINT64_MAX;
-std::atomic_uint64_t     g_gameplay_frame_return                  = UINT64_MAX;
-std::atomic_uint64_t     g_world_network_state                    = UINT64_MAX;
-std::atomic_uint32_t     g_world_status_set_count                 = 0;
-std::atomic_uint32_t     g_world_error_trace_count                = 0;
-std::atomic_uint32_t     g_world_dispatch_trace_count             = 0;
-std::atomic_uint32_t     g_world_fatal_trace_count                = 0;
-std::atomic_uint32_t     g_object_build_trace_count               = 0;
-thread_local uint32_t    g_resource_load_id                       = 0;
-thread_local uint32_t    g_resource_load_caller                   = 0;
-std::atomic_uint32_t     g_world_receive_decode_result            = UINT32_MAX;
-std::atomic_uint32_t     g_world_entity_update_trace_count        = 0;
-std::atomic_uint32_t     g_world_packet_dequeue_result            = UINT32_MAX;
-std::atomic_uint64_t     g_world_send_target                      = UINT64_MAX;
-std::atomic_uint32_t     g_lobby_next_login_character_id          = 0;
-std::atomic_bool         g_world_login_character_id_restored      = false;
-std::atomic_bool         g_direct_view_bootstrap_enabled          = false;
-std::atomic_bool         g_direct_view_bootstrap_sent             = false;
-uint16_t                 g_direct_view_bootstrap_port             = 0;
-std::array<uint8_t, 152> g_direct_view_bootstrap_packet{};
-std::atomic_bool         g_direct_map_cipher_key_enabled  = false;
-std::atomic_bool         g_direct_map_cipher_key_reported = false;
-std::array<uint8_t, 16>  g_direct_map_cipher_key{};
-std::atomic_bool         g_direct_map_endpoint_enabled = false;
-std::atomic_uint32_t     g_direct_map_ipv4             = 0;
-std::atomic_uint16_t     g_direct_map_port             = 0;
+std::atomic_bool             g_guest_trace_hooks_enabled              = false;
+std::atomic_uint32_t         g_guest_trace_hook_count                 = 0;
+std::atomic_bool             g_lobby_controller_ready                 = false;
+std::atomic_uint32_t         g_lobby_controller_object                = 0;
+std::atomic_bool             g_slot1852_registration_stub_enabled     = false;
+std::atomic_uint32_t         g_slot1852_registration_thunk            = 0;
+std::atomic_bool             g_direct_pol_resolver_enabled            = false;
+std::atomic_uint32_t         g_direct_pol_resolver_ipv4               = 0;
+std::atomic_uint32_t         g_direct_pol_resolver_begin_thunk        = 0;
+std::atomic_uint32_t         g_direct_pol_resolver_poll_thunk         = 0;
+std::atomic_uint32_t         g_direct_pol_resolver_cancel_thunk       = 0;
+std::atomic_uint32_t         g_direct_pol_resolver_begin_original     = 0;
+std::atomic_uint32_t         g_direct_pol_resolver_poll_original      = 0;
+std::atomic_uint32_t         g_direct_pol_resolver_cancel_original    = 0;
+std::atomic_uint64_t         g_config_handshake_state                 = 0;
+std::atomic_uint64_t         g_config_service_state                   = 0;
+std::atomic_uint64_t         g_config_parser_state                    = 0;
+std::atomic_uint64_t         g_config_transfer_state                  = 0;
+std::atomic_uint64_t         g_post_selection_service_open_result     = UINT64_MAX;
+std::atomic_uint64_t         g_post_selection_service_poll_result     = UINT64_MAX;
+std::atomic_uint64_t         g_post_selection_association_open_result = UINT64_MAX;
+std::atomic_uint64_t         g_post_selection_association_poll_result = UINT64_MAX;
+std::atomic_uint32_t         g_phase6_readiness_flags                 = UINT32_MAX;
+std::atomic_uint64_t         g_zone_load_sequence_state               = UINT64_MAX;
+std::atomic_uint64_t         g_gameplay_frame_return                  = UINT64_MAX;
+std::atomic_uint64_t         g_world_network_state                    = UINT64_MAX;
+std::atomic_uint32_t         g_world_status_set_count                 = 0;
+std::atomic_uint32_t         g_world_error_trace_count                = 0;
+std::atomic_uint32_t         g_world_dispatch_trace_count             = 0;
+std::atomic_uint32_t         g_world_fatal_trace_count                = 0;
+std::atomic_uint32_t         g_object_build_trace_count               = 0;
+thread_local uint32_t        g_resource_load_id                       = 0;
+thread_local uint32_t        g_resource_load_caller                   = 0;
+std::atomic_uint32_t         g_world_receive_decode_result            = UINT32_MAX;
+std::atomic_uint32_t         g_world_entity_update_trace_count        = 0;
+std::atomic_uint32_t         g_world_packet_dequeue_result            = UINT32_MAX;
+std::atomic_uint64_t         g_world_send_target                      = UINT64_MAX;
+std::atomic_uint32_t         g_lobby_next_login_character_id          = 0;
+std::atomic_bool             g_world_login_character_id_restored      = false;
+std::atomic_bool             g_direct_view_bootstrap_enabled          = false;
+std::atomic_bool             g_direct_view_bootstrap_request_sent     = false;
+std::atomic_bool             g_direct_view_bootstrap_response_ready   = false;
+std::atomic_bool             g_direct_view_bootstrap_failed           = false;
+std::atomic_bool             g_lobby_character_list_ready             = false;
+uint16_t                     g_direct_view_bootstrap_port             = 0;
+std::array<uint8_t, 152>     g_direct_view_bootstrap_packet{};
+std::atomic_bool             g_direct_map_cipher_key_enabled  = false;
+std::atomic_bool             g_direct_map_cipher_key_reported = false;
+std::atomic_bool             g_direct_map_rollover_pending    = false;
+std::mutex                   g_direct_map_key_mutex;
+revana::login::MapSessionKey g_direct_map_session_key{};
+revana::login::MapCipherKey  g_direct_map_cipher_key{};
+std::atomic_bool             g_direct_map_endpoint_enabled = false;
+std::atomic_uint32_t         g_direct_map_ipv4             = 0;
+std::atomic_uint16_t         g_direct_map_port             = 0;
 
 constexpr uint32_t kMaximumGuestTraceHooks        = 256;
 constexpr uint32_t kDirectPolResolverHandle       = 0x50584901;
@@ -475,6 +484,63 @@ uint32_t InstallDirectPolUiRegistrationStub(uint32_t table)
     return thunk;
 }
 
+void ClearDirectMapKeyMaterial()
+{
+#if defined(_WIN32)
+    SecureZeroMemory(g_direct_map_session_key.data(),
+                     g_direct_map_session_key.size());
+    SecureZeroMemory(g_direct_map_cipher_key.data(),
+                     g_direct_map_cipher_key.size());
+#else
+    g_direct_map_session_key.fill(0);
+    g_direct_map_cipher_key.fill(0);
+#endif
+}
+
+bool AdvanceDirectMapSessionKey(bool& advanced)
+{
+    advanced = false;
+    std::scoped_lock lock(g_direct_map_key_mutex);
+    if (!g_direct_map_cipher_key_enabled.load(std::memory_order_acquire))
+    {
+        return false;
+    }
+    if (g_direct_map_rollover_pending.load(std::memory_order_relaxed))
+    {
+        return true;
+    }
+
+    auto next_session_key = g_direct_map_session_key;
+    revana::login::AdvanceMapSessionKey(next_session_key);
+    revana::login::MapCipherKey next_cipher_key{};
+    if (!revana::login::DeriveMapCipherKey(next_session_key,
+                                           next_cipher_key))
+    {
+#if defined(_WIN32)
+        SecureZeroMemory(next_session_key.data(), next_session_key.size());
+        SecureZeroMemory(next_cipher_key.data(), next_cipher_key.size());
+#else
+        next_session_key.fill(0);
+        next_cipher_key.fill(0);
+#endif
+        return false;
+    }
+
+    g_direct_map_session_key = next_session_key;
+    g_direct_map_cipher_key  = next_cipher_key;
+    g_direct_map_cipher_key_reported.store(false, std::memory_order_relaxed);
+    g_direct_map_rollover_pending.store(true, std::memory_order_release);
+    advanced = true;
+#if defined(_WIN32)
+    SecureZeroMemory(next_session_key.data(), next_session_key.size());
+    SecureZeroMemory(next_cipher_key.data(), next_cipher_key.size());
+#else
+    next_session_key.fill(0);
+    next_cipher_key.fill(0);
+#endif
+    return true;
+}
+
 } // namespace
 
 void RevanaSetGuestTraceHooksEnabled(bool enabled)
@@ -489,6 +555,8 @@ void RevanaSetGuestTraceHooksEnabled(bool enabled)
         g_world_dispatch_trace_count.store(0, std::memory_order_relaxed);
         g_world_fatal_trace_count.store(0, std::memory_order_relaxed);
         g_object_build_trace_count.store(0, std::memory_order_relaxed);
+        g_world_entity_update_trace_count.store(0,
+                                                std::memory_order_relaxed);
         g_world_send_target.store(UINT64_MAX, std::memory_order_relaxed);
     }
     g_guest_trace_hooks_enabled.store(enabled, std::memory_order_relaxed);
@@ -1327,7 +1395,16 @@ void RevanaApplyDirectMapCipherKey()
     auto* memory = rex::runtime::ThreadState::Get()->memory();
     auto* destination =
         memory->TranslateVirtual<uint8_t*>(ctx->r7.u32);
-    std::copy(g_direct_map_cipher_key.begin(), g_direct_map_cipher_key.end(), destination);
+    {
+        std::scoped_lock lock(g_direct_map_key_mutex);
+        if (!g_direct_map_cipher_key_enabled.load(std::memory_order_relaxed))
+        {
+            return;
+        }
+        std::copy(g_direct_map_cipher_key.begin(),
+                  g_direct_map_cipher_key.end(),
+                  destination);
+    }
     if (!g_direct_map_cipher_key_reported.exchange(true,
                                                    std::memory_order_relaxed))
     {
@@ -1337,26 +1414,31 @@ void RevanaApplyDirectMapCipherKey()
 
 void RevanaTraceWorldReceiveDecodeResult()
 {
-    if (!g_guest_trace_hooks_enabled.load(std::memory_order_relaxed))
+    const bool trace_enabled =
+        g_guest_trace_hooks_enabled.load(std::memory_order_relaxed);
+    const bool direct_key_enabled =
+        g_direct_map_cipher_key_enabled.load(std::memory_order_acquire);
+    if (!trace_enabled && !direct_key_enabled)
     {
         return;
     }
-    auto* ctx = rex::runtime::current_ppc_context();
-    if (g_world_receive_decode_result.exchange(ctx->r3.u32,
+    auto*      ctx = rex::runtime::current_ppc_context();
+    const bool repeated_result =
+        g_world_receive_decode_result.exchange(ctx->r3.u32,
                                                std::memory_order_relaxed) ==
-        ctx->r3.u32)
-    {
-        return;
-    }
+        ctx->r3.u32;
     const auto*    memory = rex::runtime::ThreadState::Get()->memory();
     const uint32_t packet_size =
         ctx->r30.u32 == 0
             ? 0
             : rex::memory::load_and_swap<uint32_t>(
                   memory->TranslateVirtual<const uint32_t*>(ctx->r30.u32));
-    REXLOG_INFO("Xbox world receive decode result={} datagram_size={}",
-                ctx->r3.s32,
-                packet_size);
+    if (trace_enabled && !repeated_result)
+    {
+        REXLOG_INFO("Xbox world receive decode result={} datagram_size={}",
+                    ctx->r3.s32,
+                    packet_size);
+    }
     if (ctx->r3.s32 <= 0 || ctx->r3.u32 > 10000)
     {
         return;
@@ -1375,39 +1457,80 @@ void RevanaTraceWorldReceiveDecodeResult()
         const uint32_t size   = 2U * (plaintext[offset + 1] & 0xFE);
         if (size < 4 || offset + size > ctx->r3.u32)
         {
-            REXLOG_INFO(
-                "Xbox world receive packet parse stopped: offset={} id=0x{:03X} "
-                "size={} total={}",
-                offset,
-                id,
-                size,
-                ctx->r3.u32);
-            break;
-        }
-        REXLOG_INFO("Xbox world receive packet: offset={} id=0x{:03X} size={}",
+            if (trace_enabled)
+            {
+                REXLOG_INFO(
+                    "Xbox world receive packet parse stopped: offset={} "
+                    "id=0x{:03X} size={} total={}",
                     offset,
                     id,
-                    size);
+                    size,
+                    ctx->r3.u32);
+            }
+            break;
+        }
+        if (trace_enabled)
+        {
+            REXLOG_INFO("Xbox world receive packet: offset={} id=0x{:03X} size={}",
+                        offset,
+                        id,
+                        size);
+        }
+        if (id == 0x00B && direct_key_enabled)
+        {
+            bool advanced = false;
+            if (!AdvanceDirectMapSessionKey(advanced))
+            {
+                REXLOG_ERROR("Xbox direct map session key rollover failed");
+            }
+            else if (advanced)
+            {
+                REXLOG_INFO(
+                    "Xbox direct map session key advanced for zone handoff");
+            }
+        }
         if (id == 0x00A && size >= 32)
         {
-            REXLOG_INFO("Xbox world login response: hpp={} status={}",
-                        plaintext[offset + 30],
-                        plaintext[offset + 31]);
+            g_direct_map_rollover_pending.store(false,
+                                                std::memory_order_release);
+            if (trace_enabled)
+            {
+                REXLOG_INFO("Xbox world login response: hpp={} status={}",
+                            plaintext[offset + 30],
+                            plaintext[offset + 31]);
+            }
         }
-        if (id == 0x00E && size >= 52 &&
+        if (trace_enabled && id == 0x00D && size >= 12 &&
             g_world_entity_update_trace_count.fetch_add(
-                1, std::memory_order_relaxed) < 256)
+                1, std::memory_order_relaxed) < 2048)
         {
             const auto* packet = plaintext + offset;
             REXLOG_INFO(
-                "Xbox world entity update: entity=0x{:08X} targid=0x{:04X} "
-                "mask=0x{:02X} model16={} model32=0x{:08X} "
-                "look={:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} "
-                "{:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} "
-                "{:02X}",
+                "Xbox world player update: sequence={} entity=0x{:08X} "
+                "targid=0x{:04X} mask=0x{:02X} size={}",
+                ReadLe16(packet + 2),
                 ReadLe32(packet + 4),
                 ReadLe16(packet + 8),
                 packet[10],
+                size);
+        }
+        if (trace_enabled && id == 0x00E && size >= 52 &&
+            g_world_entity_update_trace_count.fetch_add(
+                1, std::memory_order_relaxed) < 2048)
+        {
+            const auto* packet = plaintext + offset;
+            REXLOG_INFO(
+                "Xbox world entity update: sequence={} entity=0x{:08X} "
+                "targid=0x{:04X} mask=0x{:02X} size={} model16={} "
+                "model32=0x{:08X} "
+                "look={:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} "
+                "{:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} "
+                "{:02X}",
+                ReadLe16(packet + 2),
+                ReadLe32(packet + 4),
+                ReadLe16(packet + 8),
+                packet[10],
+                size,
                 ReadLe16(packet + 48),
                 ReadLe32(packet + 48),
                 packet[48],
@@ -1956,22 +2079,54 @@ bool RevanaConfigureDirectLobbyViewBootstrap(uint16_t       view_port,
     }
     std::memcpy(g_direct_view_bootstrap_packet.data(), packet, packet_size);
     g_direct_view_bootstrap_port = view_port;
-    g_direct_view_bootstrap_sent.store(false, std::memory_order_relaxed);
+    g_direct_view_bootstrap_request_sent.store(false, std::memory_order_relaxed);
+    g_direct_view_bootstrap_response_ready.store(false, std::memory_order_relaxed);
+    g_direct_view_bootstrap_failed.store(false, std::memory_order_relaxed);
+    g_lobby_character_list_ready.store(false, std::memory_order_relaxed);
     g_direct_view_bootstrap_enabled.store(true, std::memory_order_release);
     REXLOG_INFO("Xbox direct view bootstrap armed for port {}", view_port);
     return true;
 }
 
-bool RevanaConfigureDirectMapCipherKey(const uint8_t* key,
-                                       size_t         key_size)
+bool RevanaConfigureDirectMapSessionKey(const uint8_t* key,
+                                        size_t         key_size)
 {
-    if (!key || key_size != g_direct_map_cipher_key.size())
+    if (!key || key_size != g_direct_map_session_key.size())
     {
-        REXLOG_ERROR("Xbox direct map cipher key configuration is invalid");
+        REXLOG_ERROR("Xbox direct map session key configuration is invalid");
         return false;
     }
-    std::copy_n(key, key_size, g_direct_map_cipher_key.begin());
+
+    revana::login::MapSessionKey session_key{};
+    std::copy_n(key, key_size, session_key.begin());
+    revana::login::MapCipherKey cipher_key{};
+    if (!revana::login::DeriveMapCipherKey(session_key, cipher_key))
+    {
+#if defined(_WIN32)
+        SecureZeroMemory(session_key.data(), session_key.size());
+        SecureZeroMemory(cipher_key.data(), cipher_key.size());
+#else
+        session_key.fill(0);
+        cipher_key.fill(0);
+#endif
+        REXLOG_ERROR("Xbox direct map cipher key derivation failed");
+        return false;
+    }
+    g_direct_map_cipher_key_enabled.store(false, std::memory_order_release);
+    {
+        std::scoped_lock lock(g_direct_map_key_mutex);
+        g_direct_map_session_key = session_key;
+        g_direct_map_cipher_key  = cipher_key;
+    }
+#if defined(_WIN32)
+    SecureZeroMemory(session_key.data(), session_key.size());
+    SecureZeroMemory(cipher_key.data(), cipher_key.size());
+#else
+    session_key.fill(0);
+    cipher_key.fill(0);
+#endif
     g_direct_map_cipher_key_reported.store(false, std::memory_order_relaxed);
+    g_direct_map_rollover_pending.store(false, std::memory_order_relaxed);
     g_direct_map_cipher_key_enabled.store(true, std::memory_order_release);
     return true;
 }
@@ -1979,13 +2134,10 @@ bool RevanaConfigureDirectMapCipherKey(const uint8_t* key,
 void RevanaClearDirectMapCipherKey()
 {
     g_direct_map_cipher_key_enabled.store(false, std::memory_order_release);
-#if defined(_WIN32)
-    SecureZeroMemory(g_direct_map_cipher_key.data(),
-                     g_direct_map_cipher_key.size());
-#else
-    g_direct_map_cipher_key.fill(0);
-#endif
+    std::scoped_lock lock(g_direct_map_key_mutex);
+    ClearDirectMapKeyMaterial();
     g_direct_map_cipher_key_reported.store(false, std::memory_order_relaxed);
+    g_direct_map_rollover_pending.store(false, std::memory_order_relaxed);
 }
 
 bool RevanaConfigureDirectMapEndpoint(uint32_t ipv4_address,
@@ -2262,43 +2414,78 @@ void RevanaTraceFourByteSocketReceive()
                             ->LookupObject<rex::system::XSocket>(object_handle)
                       : nullptr;
     if (g_direct_view_bootstrap_enabled.load(std::memory_order_acquire) &&
-        !g_direct_view_bootstrap_sent.load(std::memory_order_relaxed))
+        !g_direct_view_bootstrap_response_ready.load(std::memory_order_acquire) &&
+        !g_direct_view_bootstrap_failed.load(std::memory_order_acquire))
     {
         if (socket && socket->peer_port() == g_direct_view_bootstrap_port)
         {
-            const int sent = socket->Send(g_direct_view_bootstrap_packet.data(),
-                                          g_direct_view_bootstrap_packet.size(),
-                                          0);
-            if (sent == static_cast<int>(g_direct_view_bootstrap_packet.size()))
+            if (!g_direct_view_bootstrap_request_sent.exchange(
+                    true, std::memory_order_acq_rel))
             {
-                g_direct_view_bootstrap_sent.store(true, std::memory_order_relaxed);
-                std::fill(g_direct_view_bootstrap_packet.begin(),
-                          g_direct_view_bootstrap_packet.end(),
-                          0);
-                bool    response_ready = false;
-                uint8_t probe          = 0;
-                for (uint32_t attempt = 0; attempt < 100; ++attempt)
+                const int sent = socket->Send(g_direct_view_bootstrap_packet.data(),
+                                              g_direct_view_bootstrap_packet.size(),
+                                              0);
+                if (sent != static_cast<int>(g_direct_view_bootstrap_packet.size()))
                 {
-                    if (socket->Recv(&probe, 1, kSocketMessagePeek) > 0)
+                    g_direct_view_bootstrap_request_sent.store(
+                        false, std::memory_order_release);
+                    g_direct_view_bootstrap_failed.store(
+                        true, std::memory_order_release);
+                    REXLOG_ERROR(
+                        "Xbox direct view bootstrap send failed: sent={} expected={}",
+                        sent,
+                        g_direct_view_bootstrap_packet.size());
+                }
+                else
+                {
+                    std::fill(g_direct_view_bootstrap_packet.begin(),
+                              g_direct_view_bootstrap_packet.end(),
+                              0);
+                }
+            }
+
+            if (g_direct_view_bootstrap_request_sent.load(
+                    std::memory_order_acquire))
+            {
+                std::array<uint8_t, revana::login::kKeyResponseSize>
+                                   key_response{};
+                bool               response_ready        = false;
+                constexpr uint32_t kResponseWaitAttempts = 500;
+                for (uint32_t attempt = 0; attempt < kResponseWaitAttempts;
+                     ++attempt)
+                {
+                    const int peeked = socket->Recv(
+                        key_response.data(), key_response.size(), kSocketMessagePeek);
+                    if (peeked == static_cast<int>(key_response.size()) &&
+                        revana::login::IsCompleteKeyResponse(key_response))
                     {
                         response_ready = true;
                         break;
                     }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+                    if (peeked == 0)
+                    {
+                        break;
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 }
-                REXLOG_INFO(
-                    "Xbox direct view bootstrap sent authenticated request: "
-                    "size={} port={} response_ready={}",
-                    sent,
-                    socket->peer_port(),
-                    response_ready);
-            }
-            else
-            {
-                REXLOG_ERROR(
-                    "Xbox direct view bootstrap send failed: sent={} expected={}",
-                    sent,
-                    g_direct_view_bootstrap_packet.size());
+                SecureZeroMemory(key_response.data(), key_response.size());
+                if (response_ready)
+                {
+                    g_direct_view_bootstrap_response_ready.store(
+                        true, std::memory_order_release);
+                    REXLOG_INFO(
+                        "Xbox direct view bootstrap response ready: "
+                        "size={} port={}",
+                        revana::login::kKeyResponseSize,
+                        socket->peer_port());
+                }
+                else if (!g_direct_view_bootstrap_failed.exchange(
+                             true, std::memory_order_acq_rel))
+                {
+                    REXLOG_ERROR(
+                        "Xbox direct view bootstrap response was not ready; "
+                        "guest receive remains gated");
+                }
             }
         }
     }
@@ -2344,6 +2531,41 @@ void RevanaTraceFourByteSocketReceive()
                             ReadLe32(response.data() + 68));
                     }
                 }
+            }
+            if (command == 0x20 &&
+                packet_size >= revana::login::kCharacterListHeaderSize &&
+                packet_size <= revana::login::kCharacterListHeaderSize +
+                                   16 * revana::login::kCharacterEntrySize)
+            {
+                std::vector<uint8_t> response(packet_size);
+                bool                 response_ready        = false;
+                constexpr uint32_t   kResponseWaitAttempts = 500;
+                for (uint32_t attempt = 0; attempt < kResponseWaitAttempts;
+                     ++attempt)
+                {
+                    const int response_peeked = socket->Recv(
+                        response.data(), response.size(), kSocketMessagePeek);
+                    if (response_peeked == static_cast<int>(response.size()))
+                    {
+                        response_ready =
+                            revana::login::ParseCharacterList(response).has_value();
+                        break;
+                    }
+                    if (response_peeked == 0)
+                    {
+                        break;
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                }
+                if (response_ready &&
+                    !g_lobby_character_list_ready.exchange(
+                        true, std::memory_order_acq_rel))
+                {
+                    REXLOG_INFO(
+                        "Xbox visible-lobby boundary reached: "
+                        "validated character list received");
+                }
+                SecureZeroMemory(response.data(), response.size());
             }
         }
     }

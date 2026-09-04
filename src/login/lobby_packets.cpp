@@ -219,6 +219,14 @@ bool GenerateMapSessionKey(MapSessionKey& map_session_key)
     return true;
 }
 
+void AdvanceMapSessionKey(MapSessionKey& map_session_key)
+{
+    constexpr size_t kRolloverWordOffset = 4 * sizeof(uint32_t);
+    const uint32_t   rollover_word =
+        ReadLe32(map_session_key, kRolloverWordOffset);
+    WriteLe32(map_session_key, kRolloverWordOffset, rollover_word + 2);
+}
+
 bool DeriveMapCipherKey(const MapSessionKey& map_session_key,
                         MapCipherKey&        map_cipher_key)
 {
@@ -281,6 +289,11 @@ ParseKeyResponse(std::span<const uint8_t> bytes)
         .expansion_mask = ReadLe32(bytes, 32),
         .feature_mask   = ReadLe32(bytes, 36),
     };
+}
+
+bool IsCompleteKeyResponse(std::span<const uint8_t> bytes)
+{
+    return bytes.size() == kKeyResponseSize && ParseKeyResponse(bytes).has_value();
 }
 
 std::expected<CharacterList, ParseError>

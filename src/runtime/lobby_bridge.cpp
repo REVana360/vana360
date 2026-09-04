@@ -284,18 +284,13 @@ bool RevanaLobbyBridge::Configure(rex::RuntimeConfig& config)
         state_.reset();
         return false;
     }
-    revana::login::MapCipherKey map_cipher_key{};
-    if (!revana::login::DeriveMapCipherKey(state_->map_session_key,
-                                           map_cipher_key) ||
-        !RevanaConfigureDirectMapCipherKey(map_cipher_key.data(),
-                                           map_cipher_key.size()))
+    if (!RevanaConfigureDirectMapSessionKey(state_->map_session_key.data(),
+                                            state_->map_session_key.size()))
     {
-        SecureZeroMemory(map_cipher_key.data(), map_cipher_key.size());
-        REXLOG_ERROR("Lobby map-cipher key derivation failed");
+        REXLOG_ERROR("Lobby map-session key configuration failed");
         state_.reset();
         return false;
     }
-    SecureZeroMemory(map_cipher_key.data(), map_cipher_key.size());
     state_->ipv4      = ntohl(address.s_addr);
     state_->data_port = *data_port;
     state_->view_port = *view_port;

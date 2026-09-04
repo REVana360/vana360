@@ -11,7 +11,7 @@ void     RevanaConfigureDirectPolResolver(uint32_t ipv4_address);
 bool     RevanaConfigureDirectLobbyViewBootstrap(uint16_t       view_port,
                                                  const uint8_t* packet,
                                                  size_t         packet_size);
-bool     RevanaConfigureDirectMapCipherKey(const uint8_t* key, size_t key_size);
+bool     RevanaConfigureDirectMapSessionKey(const uint8_t* key, size_t key_size);
 void     RevanaClearDirectMapCipherKey();
 bool     RevanaConfigureDirectMapEndpoint(uint32_t ipv4_address,
                                           uint16_t port);

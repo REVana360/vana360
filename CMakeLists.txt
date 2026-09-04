@@ -58,7 +58,7 @@ if(REVANA_BUILD_TITLE)
     set_target_properties(revana_hooks PROPERTIES
         WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
     target_include_directories(revana_hooks PRIVATE src)
-    target_link_libraries(revana_hooks PRIVATE rex::runtime)
+    target_link_libraries(revana_hooks PRIVATE rex::runtime revana_login)
     if(WIN32)
         target_link_libraries(revana_hooks PRIVATE bcrypt)
     endif()

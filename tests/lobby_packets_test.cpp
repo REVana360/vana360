@@ -138,6 +138,13 @@ int main()
                            return byte != 0;
                        }));
 
+    MapSessionKey advanced_key{};
+    advanced_key[16] = 0xFE;
+    AdvanceMapSessionKey(advanced_key);
+    assert(advanced_key[4] == 0x00);
+    assert(advanced_key[16] == 0x00);
+    assert(advanced_key[17] == 0x01);
+
     ClientVersion client_version{ '3', '0', '1', '8', '1', '2', '0', '5', '_', '0' };
     const auto    view_login = MakeViewLogin(session_hash, client_version);
     assert(view_login[0] == kViewLoginSize);
@@ -205,6 +212,12 @@ int main()
     assert(key->key == 0xAD5DE04F);
     assert(key->expansion_mask == 0x11223344);
     assert(key->feature_mask == 0x55667788);
+    assert(IsCompleteKeyResponse(key_packet));
+    assert(!IsCompleteKeyResponse(std::span<const uint8_t>(
+        key_packet.data(), key_packet.size() - 1)));
+    key_packet[12] ^= 1;
+    assert(!IsCompleteKeyResponse(key_packet));
+    key_packet[12] ^= 1;
 
     std::array<uint8_t, 0xAC> character_packet{};
     WriteLe32(character_packet, 0, character_packet.size());
