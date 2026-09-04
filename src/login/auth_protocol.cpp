@@ -63,6 +63,7 @@ EncodeLoginAttempt(const AuthCredentials& credentials)
         { "password", credentials.password },
         { "otp", credentials.otp },
         { "new_password", "" },
+        { "client_profile", "july-2009-xbox" },
         { "version", { 2, 1, 0 } },
     };
     return request.dump();

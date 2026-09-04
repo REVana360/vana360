@@ -19,6 +19,7 @@ int main()
     assert(IsCompleteJson(*request));
     assert(request->find("\"command\":16") != std::string::npos);
     assert(request->find("\"version\":[2,1,0]") != std::string::npos);
+    assert(request->find("\"client_profile\":\"july-2009-xbox\"") != std::string::npos);
     assert(request->find("p\\\"ass\\\\word") != std::string::npos);
 
     const auto session = DecodeLoginResponse(
