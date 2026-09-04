@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include <rex/cvar.h>
+#include <rex/filesystem.h>
 #include <rex/filesystem/vfs.h>
 #include <rex/logging.h>
 #include <rex/rex_app.h>
@@ -51,6 +52,24 @@ public:
             ctx, "revana", PPCImageConfig));
     }
 
+    void OnConfigurePaths(rex::PathConfig& paths) override
+    {
+        const auto legacy_user_root =
+            rex::filesystem::GetUserFolder() / GetName();
+        if (paths.user_data_root != legacy_user_root)
+        {
+            return;
+        }
+
+        const auto user_root = rex::filesystem::GetUserFolder() /
+                               "My Games" / "REVana360";
+        if (paths.cache_root == legacy_user_root / "cache")
+        {
+            paths.cache_root = user_root / "cache";
+        }
+        paths.user_data_root = user_root;
+    }
+
     void OnPreSetup(rex::RuntimeConfig& config) override
     {
         RevanaConfigureDirectPolUiRegistrationStub();
@@ -69,7 +88,7 @@ public:
     void OnPostSetup() override
     {
         rex::ReXApp::OnPostSetup();
-        // Keep GetName() lowercase because it also owns user-data paths.
+        // GetName() remains the lowercase executable identity.
         window()->SetTitle("REVana360");
     }
 
