@@ -13,6 +13,12 @@ name = "sub_841285C0"
 [functions."841285F0"]
 name = "sub_841285F0"
 
+[functions."8427E730"]
+name = "sub_8427E730"
+
+[functions."842C7C38"]
+name = "sub_842C7C38"
+
 [functions."84582C20"]
 name = "sub_84582C20"
 
