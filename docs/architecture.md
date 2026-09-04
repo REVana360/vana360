@@ -18,14 +18,20 @@ Generated output is never edited or committed.
 
 ## Login and world handoff
 
-The host bridge owns authentication and account session state.
-It also owns the login data socket used to coordinate character listing and selection.
-The guest retains the login view socket and the original client-side selection flow.
+The host bridge owns authentication, account session state, and the login data
+socket used to coordinate character listing and selection. It injects the
+authenticated 152-byte view-login packet through the guest's view socket,
+validates the complete 40-byte key response, and consumes the duplicate guest
+view-login command. The guest then retains that socket and its original
+client-side selection flow.
 
-The bridge generates one 20-byte map-session key for both sides of the handoff.
-It sends that key through the host data-selection request.
-Before map login, it derives the guest's 16-byte map cipher from the same key.
-This shared key is the boundary between the replacement lobby bridge and the original client.
+For the first map handoff, the bridge generates one 20-byte map-session key,
+sends it through the host data-selection request, and derives the guest's
+16-byte map cipher from the same key. On a later `0x00B` zone handoff, it adds
+two to the key's rollover word and derives the next cipher; the following
+`0x00A` world-login response clears the pending rollover state. This shared
+key lifecycle is the boundary between the replacement lobby bridge and the
+original client.
 
 ## Replacement scope
 

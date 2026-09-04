@@ -23,6 +23,8 @@ FIRST RUN
    owned supported disc.
 3. Launch revana.exe with --game_data_root=<path-to-game-data-root>.
 4. Keep game data outside the application archive and do not add it to Git.
+5. User data and shader caches default to Documents\My Games\REVana360.
+   Use --user_data_root and --cache_root only when overriding that location.
 
 NETWORKING
 

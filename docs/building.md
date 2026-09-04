@@ -41,7 +41,7 @@ Restore the extracted runtime beneath ignored `game/`.
 Generation reads only those inputs and writes ignored output beneath `generated/`.
 
 ```powershell
-& ..\vana360-sdk\out\win-amd64\Debug\rexglued.exe codegen .\revana_manifest.toml
+& ..\vana360-sdk\out\install\win-amd64\bin\rexglue.exe codegen .\revana_manifest.toml
 cmake --preset win-amd64-title-release
 cmake --build --preset win-amd64-title-release --parallel
 ctest --test-dir .\build\win-amd64-title-release --output-on-failure
@@ -65,9 +65,11 @@ only the following package contents:
 - an empty `game/` directory
 
 `build-info.json` is copied without recomputing Git state. It records the exact
-public title and SDK revisions together with their clean or dirty state. It also
-records the SDK API, toolchain, backend, and supported input profile. Retail
-inputs, DAT files, generated source, logs, and credentials are never staged.
+public title and SDK revisions together with the title worktree's clean or dirty
+state. Title configuration separately requires a clean SDK checkout matching
+the lock. The record also includes the SDK API, toolchain, backend, and
+supported input profile. Retail inputs, DAT files, generated source, logs, and
+credentials are never staged.
 CI verifies the private runtime inputs separately. Their revision is not written
 to the archive.
 

@@ -24,7 +24,8 @@ Stable player archives are not yet available.
 
 - When available, download and completely extract an archive from the
   [Vana360 releases page](https://github.com/REVana360/vana360/releases).
-- Verify a legally owned ISO with `scripts\verify-disc.ps1`.
+- Verify a legally owned ISO with
+  `.\scripts\verify-disc.ps1 -Path <path-to-iso>`.
 - Extract game data from your legally owned supported disc into a local folder.
 - Build Vana360 when no release archive is available.
 - Run `revana.exe --game_data_root=<path-to-game-data-root>`.
