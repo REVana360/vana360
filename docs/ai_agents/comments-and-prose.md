@@ -8,8 +8,10 @@ a source citation, or the source of a manually placed value.
 Keep source attributions and packet, DAT, wiki, and other source locators
 verbatim. They provide provenance.
 
-Compress a surviving comment to one to three lines at the use site.
-Move a longer contract to a declaration or technical guide and leave a short pointer.
+Prefer a surviving comment of one to three lines at the use site. Clarity,
+correctness, source quotations, licensing, and provenance may require more
+context. Move a longer contract to a declaration or technical guide and leave
+a short pointer.
 Remove temporary work-log details.
 Keep dates or identifiers when they provide provenance.
 
