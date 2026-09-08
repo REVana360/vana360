@@ -12,6 +12,8 @@ Do not submit:
 
 - Read [`docs/ai_agents/README.md`](docs/ai_agents/README.md)
   for the contribution and evidence policies.
+- Follow the repository [style guide](docs/style-guide.md) for authored code,
+  build files, tools, configuration, and documentation.
 - Base runtime work on the exact dependency commits:
   - SDK: [`rexglue-sdk.lock.json`](rexglue-sdk.lock.json)
   - external server: [`vana360-lsb.lock.json`](vana360-lsb.lock.json)

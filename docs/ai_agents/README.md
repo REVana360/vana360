@@ -17,5 +17,6 @@ internal work plans, or maintainer-only status.
 | Contribution process | [Contributing](../../CONTRIBUTING.md) |
 | Build and packaging | [Building Vana360](../building.md) |
 | Architecture | [Architecture](../architecture.md) |
+| Repository style | [Style guide](../style-guide.md) |
 | Evidence and claims | [Evidence and claims](evidence-and-claims.md) |
 | Comments and public prose | [Comments and prose](comments-and-prose.md) |
