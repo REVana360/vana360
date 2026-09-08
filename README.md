@@ -43,6 +43,7 @@ The exact disc size, hash, and module boundary are in the
 - [Build and package Vana360](docs/building.md)
 - [Supported input](docs/supported-disc.md)
 - [Architecture](docs/architecture.md)
+- [Style guide](docs/style-guide.md)
 
 Pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before you
 open one. AI-assisted changes follow the same
