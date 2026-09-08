@@ -15,6 +15,7 @@ Final Fantasy XI: Ultimate Collection for Xbox 360, USA, Redump disc 63782.
 
 ## Verified module identities
 
+This table owns the module identities used by the codegen input verifier.
 These ordinary-file inputs are the executable set selected by the manifest.
 
 | Runtime path | Bytes | SHA-256 |

@@ -34,7 +34,7 @@ Stable player archives are not yet available.
 - Configure the external connection as described by the
   [packaged player guide](scripts/packaging/README.txt).
 
-Windows 10 or 11 x64 with a Direct3D 12 capable GPU is the supported player platform.
+Windows 11 x64 with a Direct3D 12 capable GPU is the supported player platform.
 The exact disc size, hash, and module boundary are in the
 [supported input guide](docs/supported-disc.md).
 

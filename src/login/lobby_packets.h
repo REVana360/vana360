@@ -41,8 +41,7 @@ MakeDataBind(const SessionHash& session_hash);
 
 std::array<uint8_t, kDataRequestSize>
 MakeDataAccountRequest(const SessionMaterial& session,
-                       const Ipv4Address&     server_address,
-                       bool                   include_session_hash);
+                       const Ipv4Address&     server_address);
 
 std::array<uint8_t, kDataRequestSize>
 MakeDataSelectionRequest(const MapSessionKey& map_session_key);
@@ -62,9 +61,6 @@ bool DeriveMapCipherKey(const MapSessionKey& map_session_key,
 std::array<uint8_t, kViewLoginSize>
 MakeViewLogin(const SessionHash&   session_hash,
               const ClientVersion& client_version);
-
-std::array<uint8_t, kViewCharacterRequestSize>
-MakeViewCharacterRequest(const SessionHash& session_hash);
 
 // Copies and authenticates a recognized lobby packet for transmission without
 // modifying the guest-owned source buffer. Returns false for unrelated traffic.

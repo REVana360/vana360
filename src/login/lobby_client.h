@@ -69,7 +69,4 @@ struct DataCharacterLoginResult
 std::expected<DataCharacterLoginResult, LobbyFailure>
 CoordinateCharacterLoginData(std::string_view host, const AuthSession& session, const MapSessionKey& map_session_key, std::stop_token stop_token, const LobbyOptions& options = {});
 
-std::expected<CharacterList, LobbyFailure>
-FetchCharacterSummaries(std::string_view host, const AuthSession& session, const ClientVersion& client_version, const LobbyOptions& options = {});
-
 } // namespace revana::login

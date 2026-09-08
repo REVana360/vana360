@@ -24,8 +24,6 @@ namespace
 
 constexpr size_t kDataTriggerSize         = 5;
 constexpr size_t kLoaderCharacterListSize = 0x148;
-constexpr size_t kMaximumCharacterListSize =
-    kCharacterListHeaderSize + 16 * kCharacterEntrySize;
 
 LobbyFailure Failure(LobbyError error, LobbyStage stage, std::optional<ParseError> parse_error = std::nullopt)
 {
@@ -147,14 +145,6 @@ private:
     std::array<uint8_t, Size> value_;
 };
 
-uint32_t ReadLe32(std::span<const uint8_t> bytes)
-{
-    return static_cast<uint32_t>(bytes[0]) |
-           (static_cast<uint32_t>(bytes[1]) << 8) |
-           (static_cast<uint32_t>(bytes[2]) << 16) |
-           (static_cast<uint32_t>(bytes[3]) << 24);
-}
-
 bool WaitForConnect(SOCKET socket, uint32_t timeout_ms)
 {
     fd_set write_set;
@@ -244,44 +234,6 @@ ResolveIpv4(std::string_view host)
             Failure(LobbyError::kNameResolutionFailed, LobbyStage::kResolve));
     }
     return result;
-}
-
-struct LobbySockets
-{
-    SocketHandle data;
-    SocketHandle view;
-    sockaddr_in  address{};
-};
-
-std::expected<LobbySockets, LobbyFailure>
-OpenLobbySockets(std::span<const sockaddr_in> addresses,
-                 const LobbyOptions&          options)
-{
-    for (auto address : addresses)
-    {
-        address.sin_port = htons(options.data_port);
-        SocketHandle data(socket(AF_INET, SOCK_STREAM, IPPROTO_TCP));
-        if (!data || !ConnectSocket(data.get(), address, options.timeout_ms))
-        {
-            continue;
-        }
-
-        address.sin_port = htons(options.view_port);
-        SocketHandle view(socket(AF_INET, SOCK_STREAM, IPPROTO_TCP));
-        if (!view || !ConnectSocket(view.get(), address, options.timeout_ms))
-        {
-            continue;
-        }
-
-        return LobbySockets{
-            .data    = std::move(data),
-            .view    = std::move(view),
-            .address = address,
-        };
-    }
-
-    return std::unexpected(
-        Failure(LobbyError::kConnectionFailed, LobbyStage::kConnect));
 }
 
 std::expected<std::pair<SocketHandle, sockaddr_in>, LobbyFailure>
@@ -384,35 +336,6 @@ ReceiveWaitResult ReceiveExactUntil(SOCKET socket, std::span<uint8_t> bytes, std
     return ReceiveWaitResult::kComplete;
 }
 
-std::expected<std::vector<uint8_t>, LobbyFailure>
-ReceiveLobbyPacket(SOCKET socket, size_t maximum_size, LobbyStage stage)
-{
-    std::array<uint8_t, 4> header{};
-    if (!ReceiveExact(socket, header))
-    {
-        return std::unexpected(Failure(LobbyError::kIoFailed, stage));
-    }
-
-    const uint32_t packet_size = ReadLe32(header);
-    if (packet_size > maximum_size)
-    {
-        return std::unexpected(Failure(LobbyError::kResponseTooLarge, stage));
-    }
-    if (packet_size < kLobbyHeaderSize)
-    {
-        return std::unexpected(Failure(LobbyError::kMalformedResponse, stage, ParseError::kInvalidSize));
-    }
-
-    std::vector<uint8_t> packet(packet_size);
-    std::copy(header.begin(), header.end(), packet.begin());
-    if (!ReceiveExact(socket, std::span(packet).subspan(header.size())))
-    {
-        SecureZeroMemory(packet.data(), packet.size());
-        return std::unexpected(Failure(LobbyError::kIoFailed, stage));
-    }
-    return packet;
-}
-
 Ipv4Address ToIpv4Address(const sockaddr_in& address)
 {
     Ipv4Address result{};
@@ -420,19 +343,6 @@ Ipv4Address ToIpv4Address(const sockaddr_in& address)
         reinterpret_cast<const uint8_t*>(&address.sin_addr.s_addr);
     std::copy_n(bytes, result.size(), result.begin());
     return result;
-}
-
-void ClearCharacterList(CharacterList& character_list)
-{
-    for (auto& character : character_list.characters)
-    {
-        if (!character.name.empty())
-        {
-            SecureZeroMemory(character.name.data(), character.name.size());
-        }
-        character.content_id = 0;
-        character.status     = 0;
-    }
 }
 
 } // namespace
@@ -501,7 +411,7 @@ CoordinateCharacterLoginData(std::string_view host, const AuthSession& session, 
 
     const Ipv4Address server_address = ToIpv4Address(data_socket->second);
     SensitiveArray    account_request(
-        MakeDataAccountRequest(session, server_address, true));
+        MakeDataAccountRequest(session, server_address));
     if (!SendAll(data_socket->first.get(), account_request.bytes()))
     {
         return std::unexpected(
@@ -560,147 +470,6 @@ CoordinateCharacterLoginData(std::string_view host, const AuthSession& session, 
             Failure(LobbyError::kIoFailed, LobbyStage::kDataSelectionRequest));
     }
     return result;
-}
-
-std::expected<CharacterList, LobbyFailure>
-FetchCharacterSummaries(std::string_view host, const AuthSession& session, const ClientVersion& client_version, const LobbyOptions& options)
-{
-    const bool version_valid =
-        std::all_of(client_version.begin(), client_version.end(), [](uint8_t value)
-                    {
-                        return value >= 0x20 && value <= 0x7E;
-                    });
-    const bool hash_valid =
-        std::any_of(session.session_hash.begin(), session.session_hash.end(), [](uint8_t value)
-                    {
-                        return value != 0;
-                    });
-    if (host.empty() || session.account_id == 0 || !hash_valid ||
-        !version_valid || options.data_port == 0 || options.view_port == 0 ||
-        options.timeout_ms == 0)
-    {
-        return std::unexpected(
-            Failure(LobbyError::kInvalidInput, LobbyStage::kInput));
-    }
-
-    const WinsockRuntime winsock;
-    if (!winsock.ready())
-    {
-        return std::unexpected(
-            Failure(LobbyError::kConnectionFailed, LobbyStage::kConnect));
-    }
-
-    auto addresses = ResolveIpv4(host);
-    if (!addresses)
-    {
-        return std::unexpected(addresses.error());
-    }
-    auto sockets = OpenLobbySockets(*addresses, options);
-    if (!sockets)
-    {
-        return std::unexpected(sockets.error());
-    }
-
-    SensitiveArray data_bind(MakeDataBind(session.session_hash));
-    if (!SendAll(sockets->data.get(), data_bind.bytes()))
-    {
-        return std::unexpected(
-            Failure(LobbyError::kIoFailed, LobbyStage::kDataBind));
-    }
-
-    SensitiveArray view_login(
-        MakeViewLogin(session.session_hash, client_version));
-    if (!SendAll(sockets->view.get(), view_login.bytes()))
-    {
-        return std::unexpected(
-            Failure(LobbyError::kIoFailed, LobbyStage::kViewLogin));
-    }
-
-    auto key_packet = ReceiveLobbyPacket(sockets->view.get(), kKeyResponseSize, LobbyStage::kViewLogin);
-    if (!key_packet)
-    {
-        return std::unexpected(key_packet.error());
-    }
-    const auto key = ParseKeyResponse(*key_packet);
-    SecureZeroMemory(key_packet->data(), key_packet->size());
-    if (!key)
-    {
-        return std::unexpected(Failure(LobbyError::kMalformedResponse,
-                                       LobbyStage::kViewLogin,
-                                       key.error()));
-    }
-
-    SensitiveArray character_request(
-        MakeViewCharacterRequest(session.session_hash));
-    if (!SendAll(sockets->view.get(), character_request.bytes()))
-    {
-        return std::unexpected(
-            Failure(LobbyError::kIoFailed, LobbyStage::kViewCharacterRequest));
-    }
-
-    std::array<uint8_t, kDataTriggerSize> data_trigger{};
-    if (!ReceiveExact(sockets->data.get(), data_trigger))
-    {
-        return std::unexpected(
-            Failure(LobbyError::kIoFailed, LobbyStage::kDataTrigger));
-    }
-    if (data_trigger[0] != 0x01 ||
-        !std::all_of(data_trigger.begin() + 1, data_trigger.end(), [](uint8_t value)
-                     {
-                         return value == 0;
-                     }))
-    {
-        return std::unexpected(
-            Failure(LobbyError::kUnexpectedResponse, LobbyStage::kDataTrigger));
-    }
-
-    const Ipv4Address server_address = ToIpv4Address(sockets->address);
-    SensitiveArray    account_request(
-        MakeDataAccountRequest(session, server_address, true));
-    if (!SendAll(sockets->data.get(), account_request.bytes()))
-    {
-        return std::unexpected(
-            Failure(LobbyError::kIoFailed, LobbyStage::kDataAccountRequest));
-    }
-
-    std::array<uint8_t, kLoaderCharacterListSize> loader_list{};
-    if (!ReceiveExact(sockets->data.get(), loader_list))
-    {
-        SecureZeroMemory(loader_list.data(), loader_list.size());
-        return std::unexpected(
-            Failure(LobbyError::kIoFailed, LobbyStage::kDataCharacterList));
-    }
-    if (loader_list[0] != 0x03 || loader_list[1] > 16)
-    {
-        SecureZeroMemory(loader_list.data(), loader_list.size());
-        return std::unexpected(Failure(LobbyError::kUnexpectedResponse,
-                                       LobbyStage::kDataCharacterList));
-    }
-    const uint8_t loader_character_count = loader_list[1];
-    SecureZeroMemory(loader_list.data(), loader_list.size());
-
-    auto character_packet =
-        ReceiveLobbyPacket(sockets->view.get(), kMaximumCharacterListSize, LobbyStage::kViewCharacterList);
-    if (!character_packet)
-    {
-        return std::unexpected(character_packet.error());
-    }
-    auto character_list = ParseCharacterList(*character_packet);
-    SecureZeroMemory(character_packet->data(), character_packet->size());
-    if (!character_list)
-    {
-        return std::unexpected(Failure(LobbyError::kMalformedResponse,
-                                       LobbyStage::kViewCharacterList,
-                                       character_list.error()));
-    }
-    if (character_list->characters.size() != loader_character_count)
-    {
-        ClearCharacterList(*character_list);
-        return std::unexpected(Failure(LobbyError::kUnexpectedResponse,
-                                       LobbyStage::kViewCharacterList));
-    }
-
-    return std::move(*character_list);
 }
 
 } // namespace revana::login

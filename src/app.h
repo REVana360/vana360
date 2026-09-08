@@ -78,7 +78,6 @@ public:
         {
             RevanaConfigureDirectPolResolver(*lobby_bridge_.configured_ipv4());
             REXCVAR_SET(guest_network_enabled, true);
-            REXCVAR_SET(guest_network_trace, true);
         }
         RevanaSetGuestTraceHooksEnabled(
             RevanaFlagRequested("REVANA_TRACE_STARTUP"));

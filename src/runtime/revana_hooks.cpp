@@ -1060,7 +1060,8 @@ void RevanaTraceLobbyCommand31Packet()
 
 void RevanaTraceZoneDescriptorLookup()
 {
-    if (!GuestTraceHooksEnabled())
+    const bool trace_enabled = GuestTraceHooksEnabled();
+    if (!trace_enabled && !kSynthesizePostSelectionDescriptors)
     {
         return;
     }
@@ -1113,12 +1114,15 @@ void RevanaTraceZoneDescriptorLookup()
     const uint32_t selected = ctx->r29.u32;
     if (state == 0 || selected >= 16)
     {
-        REXLOG_INFO(
-            "Xbox post-selection descriptor lookup result={} selected={} "
-            "state=0x{:08X}",
-            ctx->r3.s32,
-            selected,
-            state);
+        if (trace_enabled)
+        {
+            REXLOG_INFO(
+                "Xbox post-selection descriptor lookup result={} selected={} "
+                "state=0x{:08X}",
+                ctx->r3.s32,
+                selected,
+                state);
+        }
         return;
     }
 
@@ -1168,12 +1172,19 @@ void RevanaTraceZoneDescriptorLookup()
         store_double(kPolLocalEndpointTable, 1);
         ctx->r3.s64 = 0;
         synthesized = true;
-        REXLOG_WARN(
-            "Experimental post-selection remote and local descriptors "
-            "synthesized: "
-            "endpoint=0x{:08X} identifier=0x{:08X}",
-            endpoint,
-            identifier);
+        if (trace_enabled)
+        {
+            REXLOG_WARN(
+                "Experimental post-selection remote and local descriptors "
+                "synthesized: "
+                "endpoint=0x{:08X} identifier=0x{:08X}",
+                endpoint,
+                identifier);
+        }
+    }
+    if (!trace_enabled)
+    {
+        return;
     }
     REXLOG_INFO(
         "Xbox post-selection descriptor lookup result={} selected={} "

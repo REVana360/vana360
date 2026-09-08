@@ -183,17 +183,13 @@ MakeDataBind(const SessionHash& session_hash)
 
 std::array<uint8_t, kDataRequestSize>
 MakeDataAccountRequest(const SessionMaterial& session,
-                       const Ipv4Address&     server_address,
-                       bool                   include_session_hash)
+                       const Ipv4Address&     server_address)
 {
     std::array<uint8_t, kDataRequestSize> packet{};
     packet[0] = 0xA1;
     WriteLe32(packet, 1, session.account_id);
     std::copy(server_address.begin(), server_address.end(), packet.begin() + 5);
-    if (include_session_hash)
-    {
-        CopySessionHash(packet, session.session_hash);
-    }
+    CopySessionHash(packet, session.session_hash);
     return packet;
 }
 
@@ -252,17 +248,6 @@ MakeViewLogin(const SessionHash&   session_hash,
     WriteLe32(packet, 8, 0x26);
     CopySessionHash(packet, session_hash);
     std::copy(client_version.begin(), client_version.end(), packet.begin() + 116);
-    return packet;
-}
-
-std::array<uint8_t, kViewCharacterRequestSize>
-MakeViewCharacterRequest(const SessionHash& session_hash)
-{
-    std::array<uint8_t, kViewCharacterRequestSize> packet{};
-    WriteLe32(packet, 0, kViewCharacterRequestSize);
-    WriteLe32(packet, 4, kLobbyTerminator);
-    WriteLe32(packet, 8, 0x1F);
-    CopySessionHash(packet, session_hash);
     return packet;
 }
 

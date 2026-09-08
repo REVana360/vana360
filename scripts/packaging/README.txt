@@ -12,7 +12,7 @@ data, generated source, retail executable, DAT files, or ISO image.
 
 REQUIREMENTS
 
-Windows 10/11 x64 and a Direct3D 12 capable GPU are required. Use only legally
+Windows 11 x64 and a Direct3D 12 capable GPU are required. Use only legally
 owned content from the supported 2009 Ultimate Collection USA disc. The package
 does not include that content or a game server.
 
@@ -34,6 +34,10 @@ variables are set:
 - REVANA_LOBBY_HOST
 - REVANA_LOBBY_USERNAME
 - REVANA_LOBBY_PASSWORD
+- REVANA_LOBBY_CLIENT_VERSION
+
+Ask the server operator for its required ten-byte client version, including
+the underscore and revision suffix. It must match the server configuration.
 
 Optional lobby variables configure the corresponding login transport values:
 
@@ -42,13 +46,13 @@ Optional lobby variables configure the corresponding login transport values:
 - REVANA_LOBBY_DATA_PORT
 - REVANA_LOBBY_VIEW_PORT
 - REVANA_LOBBY_CERTIFICATE_SHA256
-- REVANA_LOBBY_CLIENT_VERSION
 
 DIAGNOSTICS
 
 REVANA_TRACE_STARTUP=1 enables guest startup and runtime tracing.
 REVANA_LOBBY_STATE_TRACE=1 enables lobby state-change tracing. Diagnostic logs
-can contain runtime details and must be kept private.
+can contain runtime details and must be kept private. SDK socket metadata
+tracing is separately opt-in through --guest_network_trace=true.
 
 LEGAL
 

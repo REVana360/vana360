@@ -2,7 +2,8 @@
 
 ## Prerequisites
 
-Vana360 supports Windows 10 or 11 x64. Install:
+Vana360 supports Windows 11 x64. Its Schannel login transport requires TLS 1.3.
+Install:
 
 - CMake 3.25 or newer
 - Ninja

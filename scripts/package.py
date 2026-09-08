@@ -151,7 +151,7 @@ def _is_reparse_point(path: pathlib.Path) -> bool:
     if path.is_symlink():
         return True
     try:
-        attributes = path.stat().st_file_attributes
+        attributes = path.lstat().st_file_attributes
     except (AttributeError, FileNotFoundError, OSError):
         return False
     return bool(attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))
@@ -171,6 +171,8 @@ def _copy_regular_file(source: pathlib.Path, destination: pathlib.Path, label: s
 
 
 def _remove_regular_tree(path: pathlib.Path) -> None:
+    if _is_reparse_point(path):
+        raise SystemExit(f"error: reparse point in staging tree: {path}")
     for child in path.iterdir():
         if _is_reparse_point(child):
             raise SystemExit(f"error: reparse point in staging tree: {child}")
@@ -194,10 +196,12 @@ def _safe_stage(out_dir: pathlib.Path, name: str) -> pathlib.Path:
         raise SystemExit(f"error: package staging directory escapes output directory: {package_dir}")
     package_dir.mkdir(parents=True, exist_ok=True)
     stage = out_dir / "pkg" / name
+    if _is_reparse_point(stage):
+        raise SystemExit(f"error: reparse point in staging tree: {stage}")
     if out_root not in stage.resolve().parents:
         raise SystemExit(f"error: staging path escapes output directory: {stage}")
-    if stage.exists() or stage.is_symlink():
-        if stage.is_symlink() or not stage.is_dir():
+    if stage.exists():
+        if not stage.is_dir():
             raise SystemExit(f"error: staging path is not a directory: {stage}")
         if out_root not in stage.resolve().parents:
             raise SystemExit(f"error: staging path escapes output directory: {stage}")
@@ -250,9 +254,9 @@ def _write_zip(archive_path: pathlib.Path, stage: pathlib.Path, name: str) -> No
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
 
+    if _is_reparse_point(args.build_dir) or not args.build_dir.is_dir():
+        raise SystemExit(f"error: Release build directory is missing or a reparse point: {args.build_dir}")
     build_dir = args.build_dir.resolve()
-    if _is_reparse_point(build_dir) or not build_dir.is_dir():
-        raise SystemExit(f"error: Release build directory is missing: {build_dir}")
 
     build_info, build_info_bytes = read_build_info(build_dir)
     name = f"{PACKAGE_NAME}-v{build_info['version']}-{PACKAGE_PLATFORM}-{PACKAGE_ARCHITECTURE}"
@@ -289,7 +293,7 @@ def main(argv: list[str] | None = None) -> None:
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     archive_path = args.out_dir / f"{name}.zip"
-    if archive_path.exists() and _is_reparse_point(archive_path):
+    if _is_reparse_point(archive_path):
         raise SystemExit(f"error: archive path is a reparse point: {archive_path}")
     _write_zip(archive_path, stage, name)
     print(f"packaged: {archive_path}")

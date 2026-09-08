@@ -1,13 +1,12 @@
 import json
+import os
 import pathlib
+import stat
 import subprocess
 import sys
 import tempfile
 import unittest
 import zipfile
-
-from scripts.package import build_info_summary
-
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 PACKAGE = REPO / "scripts" / "package.py"
@@ -39,6 +38,13 @@ BUILD_INFO = {
     "supported_input_profile": "ffxi-ultimate-collection-usa-redump-63782",
 }
 
+BUILD_INFO_SUMMARY = (
+    "vana360 v0.1.0 title=1111111111111111111111111111111111111111-clean "
+    "sdk=2222222222222222222222222222222222222222 api=0.10.0 "
+    "platform=windows arch=x64 config=Release compiler=Clang-22.1.0 "
+    "backend=xenos input=ffxi-ultimate-collection-usa-redump-63782"
+)
+
 
 class PackageTests(unittest.TestCase):
     def _fixture(self):
@@ -50,7 +56,7 @@ class PackageTests(unittest.TestCase):
         for relative in RELEASE_FILES:
             (build / relative).write_bytes(relative.encode("ascii"))
         (build / "revana.exe").write_bytes(
-            build_info_summary(BUILD_INFO).encode("ascii")
+            BUILD_INFO_SUMMARY.encode("ascii")
         )
         build_info_bytes = (json.dumps(BUILD_INFO, indent=2) + "\n").encode("ascii")
         (build / "revana-build-info.json").write_bytes(build_info_bytes)
@@ -94,7 +100,6 @@ class PackageTests(unittest.TestCase):
             with zipfile.ZipFile(archive) as package:
                 names = set(package.namelist())
                 self.assertEqual(names, expected_files | {f"{package_root}/", f"{package_root}/game/"})
-                self.assertNotIn(f"{package_root}/unexpected.dll", names)
                 self.assertEqual(
                     package.read(f"{package_root}/build-info.json"),
                     (build / "revana-build-info.json").read_bytes(),
@@ -194,6 +199,35 @@ class PackageTests(unittest.TestCase):
             self.assertNotEqual(second.returncode, 0)
             self.assertIn("reparse point in staging tree", second.stderr)
             self.assertEqual(marker.read_text(encoding="ascii"), "keep")
+
+    @unittest.skipUnless(os.name == "nt", "NTFS junction regression")
+    def test_staging_root_junction_preserves_target(self):
+        temp, _, build, output = self._fixture()
+        with temp:
+            package_dir = output / "pkg"
+            package_dir.mkdir(parents=True)
+            target = output / "existing-data"
+            target.mkdir()
+            marker = target / "keep.txt"
+            marker.write_text("keep", encoding="ascii")
+            stage = package_dir / "vana360-v0.1.0-windows-x64"
+            junction = subprocess.run(
+                ["cmd", "/c", "mklink", "/J", str(stage), str(target)],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(junction.returncode, 0, junction.stderr)
+            try:
+                result = self._run(build, output)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("reparse point in staging tree", result.stderr)
+                self.assertEqual(marker.read_text(encoding="ascii"), "keep")
+            finally:
+                # Unlink only the junction before temporary-directory cleanup.
+                if stage.exists() and (
+                    stage.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT
+                ):
+                    stage.rmdir()
 
 if __name__ == "__main__":
     unittest.main()
