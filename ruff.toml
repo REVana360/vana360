@@ -1,0 +1,4 @@
+# High-signal checks for first-party repository tools.
+[lint]
+select = ["E", "F"]
+ignore = ["E501"]

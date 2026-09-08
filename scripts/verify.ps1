@@ -126,6 +126,25 @@ if (-not $clangFormat) {
     }
 }
 
+$requiredRuffVersion = '0.15.21'
+$ruff = Get-Command ruff -ErrorAction SilentlyContinue
+$ruffStatus = 'failed'
+if (-not $ruff) {
+    Add-Failure "Ruff $requiredRuffVersion is required but was not found on PATH"
+} else {
+    try {
+        $ruffVersionOutput = @(& $ruff.Source --version 2>&1)
+        $ruffVersionText = ($ruffVersionOutput -join "`n").Trim()
+        if ($LASTEXITCODE -ne 0 -or $ruffVersionText -cne "ruff $requiredRuffVersion") {
+            Add-Failure "Ruff $requiredRuffVersion is required; found $ruffVersionText"
+        } else {
+            $ruffStatus = 'ready'
+        }
+    } catch {
+        Add-Failure "Ruff version check failed: $($_.Exception.Message)"
+    }
+}
+
 $python = Get-Command python -ErrorAction SilentlyContinue
 $pythonTestStatus = 'skipped'
 if (-not $python) {
@@ -148,6 +167,20 @@ if (-not $python) {
     $astOutput = @(& $python.Source -c $astCode @pythonFiles 2>&1)
     if ($LASTEXITCODE -ne 0) {
         Add-Failure "Python AST parse failed: $($astOutput -join ' ')"
+    }
+
+    if ($ruffStatus -eq 'ready') {
+        $ruffCheckOutput = @(& $ruff.Source check --no-cache @pythonFiles 2>&1)
+        if ($LASTEXITCODE -ne 0) {
+            Add-Failure "Ruff lint failed: $($ruffCheckOutput -join ' ')"
+        } else {
+            $ruffFormatOutput = @(& $ruff.Source format --check --no-cache @pythonFiles 2>&1)
+            if ($LASTEXITCODE -ne 0) {
+                Add-Failure "Ruff format failed: $($ruffFormatOutput -join ' ')"
+            } else {
+                $ruffStatus = 'clean'
+            }
+        }
     }
 
     $testRoot = Join-Path $PSScriptRoot 'tests'
@@ -257,4 +290,4 @@ if ($failures.Count -gt 0) {
     exit 1
 }
 
-Write-Output "verify: passed files=$($listed.Count) private-paths=1 retail-generated=1 ASCII=1 JSON=1 TOML=1 Python=1 Python-tests=$pythonTestStatus PowerShell=1 Markdown=1 manifest-graph=1 codegen-inputs=1 sdk-lock=1 server-lock=1 clang-format=$clangFormatStatus git-whitespace=1"
+Write-Output "verify: passed files=$($listed.Count) private-paths=1 retail-generated=1 ASCII=1 JSON=1 TOML=1 Python=1 Python-tests=$pythonTestStatus Ruff=$ruffStatus PowerShell=1 Markdown=1 manifest-graph=1 codegen-inputs=1 sdk-lock=1 server-lock=1 clang-format=$clangFormatStatus git-whitespace=1"

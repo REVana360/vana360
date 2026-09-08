@@ -11,6 +11,11 @@ Install:
 - LLVM/Clang
 
 The Windows presets resolve `clang++` from `PATH`.
+Install the pinned repository-check tools:
+
+```powershell
+python -m pip install -r .\scripts\requirements-dev.txt
+```
 
 The sibling `vana360-sdk` checkout must match [`rexglue-sdk.lock.json`](../rexglue-sdk.lock.json).
 Keep legally owned retail inputs on your machine and untracked.
@@ -82,6 +87,7 @@ Run the same public repository check used by GitHub Actions:
 .\scripts\verify.ps1
 ```
 
-Repository checks use the root `.clang-format`; CI installs `clang-format` 22.1.8.
+Repository checks use the root `.clang-format` and `ruff.toml`; CI installs
+clang-format 22.1.8 and Ruff 0.15.21 from the development requirements.
 This check does not require retail inputs. Full title generation and builds use
 the pinned SDK and runtime inputs extracted from your legally owned disc.

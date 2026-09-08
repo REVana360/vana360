@@ -55,9 +55,7 @@ class PackageTests(unittest.TestCase):
         build.mkdir()
         for relative in RELEASE_FILES:
             (build / relative).write_bytes(relative.encode("ascii"))
-        (build / "revana.exe").write_bytes(
-            BUILD_INFO_SUMMARY.encode("ascii")
-        )
+        (build / "revana.exe").write_bytes(BUILD_INFO_SUMMARY.encode("ascii"))
         build_info_bytes = (json.dumps(BUILD_INFO, indent=2) + "\n").encode("ascii")
         (build / "revana-build-info.json").write_bytes(build_info_bytes)
         return temp, root, build, output
@@ -90,7 +88,9 @@ class PackageTests(unittest.TestCase):
             self.assertEqual(len(archives), 1)
             archive = archives[0]
             package_root = archive.name.removesuffix(".zip")
-            expected_files = {f"{package_root}/{relative}" for relative in RELEASE_FILES}
+            expected_files = {
+                f"{package_root}/{relative}" for relative in RELEASE_FILES
+            }
             expected_files |= {
                 f"{package_root}/LICENSE.txt",
                 f"{package_root}/README.txt",
@@ -99,7 +99,10 @@ class PackageTests(unittest.TestCase):
             }
             with zipfile.ZipFile(archive) as package:
                 names = set(package.namelist())
-                self.assertEqual(names, expected_files | {f"{package_root}/", f"{package_root}/game/"})
+                self.assertEqual(
+                    names,
+                    expected_files | {f"{package_root}/", f"{package_root}/game/"},
+                )
                 self.assertEqual(
                     package.read(f"{package_root}/build-info.json"),
                     (build / "revana-build-info.json").read_bytes(),
@@ -151,9 +154,7 @@ class PackageTests(unittest.TestCase):
         with temp:
             raw = (build / "revana-build-info.json").read_text(encoding="ascii")
             duplicate = raw.replace('"schema": 1,', '"schema": 1,\n  "schema": 1,')
-            (build / "revana-build-info.json").write_text(
-                duplicate, encoding="ascii"
-            )
+            (build / "revana-build-info.json").write_text(duplicate, encoding="ascii")
             result = self._run(build, output)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("not valid ASCII JSON", result.stderr)
@@ -228,6 +229,7 @@ class PackageTests(unittest.TestCase):
                     stage.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT
                 ):
                     stage.rmdir()
+
 
 if __name__ == "__main__":
     unittest.main()

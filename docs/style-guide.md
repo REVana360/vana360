@@ -100,7 +100,8 @@ line endings, final newlines, and trailing-whitespace handling.
   Preserve generated module target names. Keep changes target-scoped rather
   than adding global flags for one feature.
 - Python uses four spaces, `snake_case` functions and variables, and
-  `UPPER_SNAKE_CASE` constants. Keep imports explicit.
+  `UPPER_SNAKE_CASE` constants. Keep imports explicit. Use
+  [`ruff.toml`](../ruff.toml) with Ruff 0.15.21 for formatting and lint checks.
 - PowerShell uses four spaces, established Verb-Noun helper names, strict error
   handling, and literal-path operations where paths may contain user input.
 - JSON and YAML use two spaces. Preserve JSON and TOML keys, schemas, source
@@ -116,7 +117,8 @@ From the repository root, run:
 ```
 
 The check validates tracked-file hygiene, configuration syntax, Python tests,
-PowerShell parsing, Markdown links, manifests, dependency locks, and
-clang-format 22. Follow [Build and package Vana360](building.md) for native
-CTest and title-build commands when a change affects those boundaries. Always
-run `git diff --check` and inspect the complete diff before committing.
+Ruff formatting and lint, PowerShell parsing, Markdown links, manifests,
+dependency locks, and clang-format 22. Follow
+[Build and package Vana360](building.md) for native CTest and title-build
+commands when a change affects those boundaries. Always run
+`git diff --check` and inspect the complete diff before committing.

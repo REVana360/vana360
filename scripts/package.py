@@ -164,7 +164,9 @@ def _regular_file(path: pathlib.Path, label: str) -> None:
         raise SystemExit(f"error: required file is missing: {label}")
 
 
-def _copy_regular_file(source: pathlib.Path, destination: pathlib.Path, label: str) -> None:
+def _copy_regular_file(
+    source: pathlib.Path, destination: pathlib.Path, label: str
+) -> None:
     _regular_file(source, label)
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source, destination)
@@ -188,12 +190,20 @@ def _remove_regular_tree(path: pathlib.Path) -> None:
 def _safe_stage(out_dir: pathlib.Path, name: str) -> pathlib.Path:
     out_root = out_dir.resolve()
     if _is_reparse_point(out_dir) or (out_dir.exists() and not out_dir.is_dir()):
-        raise SystemExit(f"error: output directory is not a regular directory: {out_dir}")
+        raise SystemExit(
+            f"error: output directory is not a regular directory: {out_dir}"
+        )
     package_dir = out_dir / "pkg"
-    if _is_reparse_point(package_dir) or (package_dir.exists() and not package_dir.is_dir()):
-        raise SystemExit(f"error: package staging directory is not a regular directory: {package_dir}")
+    if _is_reparse_point(package_dir) or (
+        package_dir.exists() and not package_dir.is_dir()
+    ):
+        raise SystemExit(
+            f"error: package staging directory is not a regular directory: {package_dir}"
+        )
     if package_dir.exists() and package_dir.resolve().parent != out_root:
-        raise SystemExit(f"error: package staging directory escapes output directory: {package_dir}")
+        raise SystemExit(
+            f"error: package staging directory escapes output directory: {package_dir}"
+        )
     package_dir.mkdir(parents=True, exist_ok=True)
     stage = out_dir / "pkg" / name
     if _is_reparse_point(stage):
@@ -242,7 +252,12 @@ def _write_zip(archive_path: pathlib.Path, stage: pathlib.Path, name: str) -> No
             info.compress_type = zipfile.ZIP_DEFLATED
             info.create_system = 0
             info.external_attr = (stat.S_IFREG | 0o644) << 16
-            archive.writestr(info, source.read_bytes(), compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+            archive.writestr(
+                info,
+                source.read_bytes(),
+                compress_type=zipfile.ZIP_DEFLATED,
+                compresslevel=9,
+            )
 
         game_info = zipfile.ZipInfo(f"{name}/game/")
         game_info.date_time = (1980, 1, 1, 0, 0, 0)
@@ -255,7 +270,9 @@ def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
 
     if _is_reparse_point(args.build_dir) or not args.build_dir.is_dir():
-        raise SystemExit(f"error: Release build directory is missing or a reparse point: {args.build_dir}")
+        raise SystemExit(
+            f"error: Release build directory is missing or a reparse point: {args.build_dir}"
+        )
     build_dir = args.build_dir.resolve()
 
     build_info, build_info_bytes = read_build_info(build_dir)
@@ -275,7 +292,11 @@ def main(argv: list[str] | None = None) -> None:
     if build_info_summary(build_info).encode("ascii") not in executable.read_bytes():
         raise SystemExit("error: executable and build info differ")
 
-    _copy_regular_file(REPO / "scripts" / "packaging" / "README.txt", stage / "README.txt", "README.txt")
+    _copy_regular_file(
+        REPO / "scripts" / "packaging" / "README.txt",
+        stage / "README.txt",
+        "README.txt",
+    )
     _copy_regular_file(REPO / "LICENSE", stage / "LICENSE.txt", "LICENSE")
     _copy_regular_file(
         REPO / "REXGLUE-LICENSE.txt",

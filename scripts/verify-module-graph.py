@@ -27,7 +27,10 @@ def main() -> int:
         raise SystemExit("manifest project name must be revana")
 
     entrypoint = data.get("entrypoint", {})
-    if pathlib.PurePosixPath(entrypoint.get("file_path", "")).name.lower() != "gameexeccontent0001.xex":
+    if (
+        pathlib.PurePosixPath(entrypoint.get("file_path", "")).name.lower()
+        != "gameexeccontent0001.xex"
+    ):
         raise SystemExit("manifest must have one GameExecContent0001 entrypoint")
     if not beneath(entrypoint.get("file_path", ""), "game"):
         raise SystemExit("entrypoint must read beneath game/")
